@@ -1,0 +1,60 @@
+# Kafka with zookeeper from bitnami charts if not preinstalled, enable these
+bitnami-kafka:
+  enabled: true
+  logRetentionHours: "2"
+  defaultReplicationFactor: 1
+  offsetsTopicReplicationFactor: 1
+  transactionStateLogReplicationFactor: 1
+  numPartitions: 5
+  replicaCount: 1
+  autoCreateTopicsEnable: true
+  deleteTopicEnable: true
+
+  persistence:
+    enabled: false
+    accessModes:
+      - ReadWriteOnce
+    size: 2Gi
+
+  zookeeper:
+    enabled: true
+    replicaCount: 1
+    persistence:
+      enabled: false
+      size: 1Gi
+
+  resources:
+    limits: {}
+    requests:
+      cpu: 200m
+      memory: 1500Mi
+
+# Debezium kafka connector
+debezium:
+  enabled: true
+  # fixer_container:
+  #   image: mosipdev/debezium-fixer:develop
+  # If kafka is preinstalled, specify how it can be reached here
+  # kafka:
+  #   server: "kafka:9092"
+
+# Elasticsearch kafka connector
+confluentinc:
+  enabled: true
+  cp-kafka-connect:
+    enabled: true
+    # If kafka is preinstalled, specify how it can be reached here
+    # kafka:
+    #   bootstrapServers: kafka.kafka:9092
+    # configurationOverrides:
+    #   zookeeper.connect: zookeeper:2181
+
+# KafkaClient
+kafkaClient:
+  enabled: true
+  # the following is when no secret is to be used from db_pass
+  db_secretref: null
+
+# Enable if you do not have Elastisearch already installed in your cluster
+bitnami-elasticsearch:
+  enabled: false
