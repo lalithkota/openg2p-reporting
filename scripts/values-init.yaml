@@ -1,0 +1,32 @@
+# base:
+#   db_prefix:
+#   db_user:
+#   db_hostname:
+#   db_port:
+#   # if this is not false it will directly take pass from this variable, else it will take from db_pass_secretref
+#   db_pass_direct:
+#   es_url:
+#   kibana_url:
+base:
+  db_prefix: "openg2p"
+  db_user: postgres
+  db_hostname: "openg2p-postgresql.openg2p"
+  db_port: "5432"
+  db_pass_secretref:
+    name: openg2p-postgresql
+    key: postgres-password
+  es_url: http://elasticsearch:9200
+  kibana_url: http://elasticsearch-kibana:5601
+
+debezium_connectors:
+  enabled: true
+  delay_between_connectors: "20s"
+  # existingConfigMap:
+  dbs:
+    - name: "bitnami_odoo"
+      tables: "public.res_partner,public.g2p_program,public.g2p_program_fund,public.g2p_program_membership,public.g2p_program_membership_duplicate,public.g2p_entitlement,public.g2p_payment_batch,public.g2p_payment"
+
+es_kafka_connectors:
+  enabled: true
+  delay_between_connectors: "10s"
+  # existingConfigMap:
