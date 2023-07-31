@@ -6,15 +6,12 @@ fi
 
 ## Variables
 NS=reporting
-POSTGRES_NAMESPACE=openg2p
-POSTGRES_SECRET=openg2p-postgresql
+POSTGRES_NAMESPACE=postgres
+POSTGRES_SECRET=postgres-postgresql
 CHART_VERSION=12.0.2
 INSTALL_NAME="openg2p"
 
-# Add helm repos
-echo "Adding helm repos"
 helm repo add mosip https://mosip.github.io/mosip-helm
-helm repo add kafka-ui https://provectus.github.io/kafka-ui
 helm repo update
 
 # Creating namespace with istio-injeciton
@@ -27,9 +24,6 @@ kubectl -n $POSTGRES_NAMESPACE get secret $POSTGRES_SECRET -o yaml | sed "s/name
 
 echo "Installing reporting helm"
 helm -n $NS install reporting mosip/reporting -f values.yaml --wait --version $CHART_VERSION
-
-echo "Installing Kafka UI"
-helm -n $NS install kafka-ui kafka-ui/kafka-ui -f kafka-ui-values.yaml
 
 echo "Waiting for helm chart to install"
 sleep 30s
