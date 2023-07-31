@@ -24,7 +24,7 @@ debezium_connectors:
   # existingConfigMap:
   dbs:
     - name: "bitnami_odoo"
-      tables: "public.res_partner,public.g2p_program,public.g2p_program_fund,public.g2p_program_membership,public.g2p_program_membership_duplicate,public.g2p_entitlement,public.g2p_payment_batch,public.g2p_payment"
+      tables: "public.res_partner,public.g2p_program,public.g2p_program_fund,public.g2p_program_membership,public.g2p_program_membership_duplicate,public.g2p_program_registrant_info,public.g2p_program_assessment,public.g2p_entitlement,public.g2p_payment_batch,public.g2p_payment"
 
 es_kafka_connectors:
   enabled: true
