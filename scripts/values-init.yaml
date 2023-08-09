@@ -10,7 +10,7 @@
 base:
   db_prefix: "openg2p"
   db_user: postgres
-  db_hostname: "postgres-postgresql.openg2p"
+  db_hostname: "postgres-postgresql.postgres"
   db_port: "5432"
   db_pass_secretref:
     name: postgres-postgresql

@@ -23,10 +23,7 @@ kubectl -n $NS delete --ignore-not-found=true secret $POSTGRES_SECRET
 kubectl -n $POSTGRES_NAMESPACE get secret $POSTGRES_SECRET -o yaml | sed "s/namespace: $POSTGRES_NAMESPACE/namespace: $NS/g" | kubectl -n $NS create -f -
 
 echo "Installing reporting helm"
-helm -n $NS install reporting mosip/reporting -f values.yaml --wait --version $CHART_VERSION
-
-echo "Waiting for helm chart to install"
-sleep 30s
+helm -n $NS install reporting mosip/reporting -f values.yaml --wait --version $CHART_VERSION && sleep 60s
 
 echo "Installing reporting-init helm"
 DEBEZ_CONN_FILE="kafka-connect/debez-sample-conn.api"
