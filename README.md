@@ -1,10 +1,6 @@
 # OpenG2P Reporting
+This repository contains components for OpenG2P Reporting system. Refer to [OpenG2P Docs](https://docs.openg2p.org/v/1.1) for details of the reporting framework and installation of the same.
 
-This repository contains components part of the OpenG2P Reporting system.
+# License
+This repository is licensed under [MPL-2.0](LICENSE).
 
-## Installation
-
-- Refer to [scripts](./scripts/)
-
-Note: For the purposes of the current integration, we will be using
-[mosip/reporting](https://github.com/mosip/reporting) framework
