@@ -3,13 +3,12 @@ repos:
     rev: v2.4.1
     hooks:
       - id: prettier
-        name: prettier (with plugin-xml)
+        name: prettier (with plugin-java)
         additional_dependencies:
           - "prettier@2.4.1"
           - "@prettier/plugin-xml@1.1.0"
-        args:
-          - --plugin=@prettier/plugin-xml
-        files: \.(css|htm|html|js|json|jsx|less|md|scss|toml|ts|xml|yaml|yml)$
+          - "prettier-plugin-java"
+        files: \.(css|htm|html|java|js|json|jsx|less|md|scss|toml|ts|xml|yaml|yml)$
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v4.0.1
     hooks:

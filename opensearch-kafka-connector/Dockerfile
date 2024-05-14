@@ -1,5 +1,16 @@
+FROM maven:3.9.6-eclipse-temurin-21-alpine AS builder
+
+ARG DEBEZIUM_VERSION=2.6.1.Final
+COPY kafka-connect-transforms /kafka-connect-transforms
+RUN cd /kafka-connect-transforms && \
+    mvn install -DskipTests && \
+    cd target && \
+    wget https://repo.maven.apache.org/maven2/io/debezium/debezium-core/${DEBEZIUM_VERSION}/debezium-core-${DEBEZIUM_VERSION}.jar && \
+    wget https://repo.maven.apache.org/maven2/io/debezium/debezium-api/${DEBEZIUM_VERSION}/debezium-api-${DEBEZIUM_VERSION}.jar
+
+
+FROM apache/kafka:3.7.0 AS runner
 ARG KAFKA_VERSION=3.7.0
-FROM apache/kafka:${KAFKA_VERSION}
 
 WORKDIR /opt/kafka
 RUN mkdir connectors
@@ -13,6 +24,9 @@ RUN cd connectors && \
     rm -r opensearch *.zip
 
 COPY connect-distributed.properties config/
+
+COPY --from=builder /kafka-connect-transforms/target/kafka-connect-transforms-*.jar /opt/kafka/connectors/kafka-connect-transforms/
+COPY --from=builder /kafka-connect-transforms/target/debezium-*.jar /opt/kafka/connectors/kafka-connect-transforms/
 
 EXPOSE 8083
 

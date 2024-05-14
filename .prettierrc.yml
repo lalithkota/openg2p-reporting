@@ -6,3 +6,6 @@ proseWrap: always
 semi: true
 trailingComma: "es5"
 xmlWhitespaceSensitivity: "strict"
+plugins:
+  - @prettier/plugin-xml
+  - prettier-plugin-java

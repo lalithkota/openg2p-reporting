@@ -18,7 +18,6 @@ dependencies:
 - name: os-kafka-connector
   version: 0.0.0-develop
   condition: os-kafka-connector.enabled
-  icon: https://openg2p.github.io/openg2p-helm/openg2p-reporting-logo.png
-  xyds: hello
-  annotations:
-    catalog.cattle.io/display-name: "OpenG2P Reporting"
+icon: https://openg2p.github.io/openg2p-helm/openg2p-logo.png
+annotations:
+  catalog.cattle.io/display-name: "OpenG2P Reporting"

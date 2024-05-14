@@ -14,17 +14,12 @@ jobs:
     runs-on: ubuntu-latest
     env:
       NAMESPACE: ${{ secrets.docker_hub_organisation || 'openg2p' }}
-      SERVICE_NAME: opensearch-kafka-connector
+      SERVICE_NAME: reporting-opensearch-kafka-connector
     steps:
       - uses: actions/checkout@v3
       - name: Docker build
         run: |
           BRANCH_NAME=$(echo ${{ github.ref }} | sed -e 's,.*/\(.*\),\1,')
-          if [ $? -ne 0 ];then
-            echo "::error::Failed to Login to dockerhub"
-            exit 1;
-          fi
-
           IMAGE_ID=$NAMESPACE/$SERVICE_NAME
 
           # Change all uppercase to lowercase
@@ -38,6 +33,7 @@ jobs:
           echo IMAGE_ID=$IMAGE_ID >> $GITHUB_ENV
           echo VERSION=$VERSION >> $GITHUB_ENV
 
+          cd opensearch-kafka-connector
           docker build . \
             --file Dockerfile \
             --tag $IMAGE_ID:$VERSION
