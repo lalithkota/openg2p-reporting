@@ -72,3 +72,9 @@ docs/_build/
 
 # OCA rules
 !static/lib/
+
+# JAVA
+target
+
+# IDEA
+.idea
