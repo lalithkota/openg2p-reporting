@@ -4,26 +4,26 @@
 #DB_HOSTNAME=
 #DB_PASS=
 #DB_PREFIX_INDEX=
-#ES_URL=
+#OS_URL=
 
-ES_CONN_URL='es-connect:8083'; # needn't change .. this is the ES-connector service name
+OS_CONN_URL='os-connect:8083'; # needn't change .. this is the OS-connector service name
 
 CONN_NAME="g2p_entitlement_$DB_PREFIX_INDEX"; # change this.. give unique name for each db/table
-ES_INDICES="$DB_PREFIX_INDEX.public.g2p_entitlement"
+OS_INDICES="$DB_PREFIX_INDEX.public.g2p_entitlement"
 
 curl \
   -X POST \
-  http://$ES_CONN_URL/connectors \
+  http://$OS_CONN_URL/connectors \
   -H 'Content-Type: application/json' \
   -d \
   '{
       "name": '\"$CONN_NAME\"',
       "config": {
-          "connector.class": "io.confluent.connect.elasticsearch.ElasticsearchSinkConnector",
+          "connector.class": "io.aiven.kafka.connect.opensearch.OpensearchSinkConnector",
           "name": '\"$CONN_NAME\"',
-          "connection.url": '\"$ES_URL\"',
+          "connection.url": '\"$OS_URL\"',
           "tasks.max": "1",
-          "topics": '\"$ES_INDICES\"',
+          "topics": '\"$OS_INDICES\"',
           "key.ignore": "false",
           "schema.ignore": "true",
           "key.converter": "org.apache.kafka.connect.json.JsonConverter",
@@ -44,68 +44,68 @@ curl \
           "transforms.debezExtract.add.fields": "source.ts_ms:ts_ms,table,lsn",
           "transforms.debezExtract.add.fields.prefix": "source_",
 
-          "transforms.tsconvert01.type": "io.mosip.kafka.connect.transforms.TimestampConverterAdv$Value",
+          "transforms.tsconvert01.type": "io.openg2p.kafka.connect.transforms.TimestampConverterAdv$Value",
           "transforms.tsconvert01.field": "source_ts_ms",
 
-          "transforms.tsconvert02.type": "io.mosip.kafka.connect.transforms.TimestampConverterAdv$Value",
+          "transforms.tsconvert02.type": "io.openg2p.kafka.connect.transforms.TimestampConverterAdv$Value",
           "transforms.tsconvert02.field": "create_date",
           "transforms.tsconvert02.input.type": "micro_sec",
 
-          "transforms.tsconvert03.type": "io.mosip.kafka.connect.transforms.TimestampConverterAdv$Value",
+          "transforms.tsconvert03.type": "io.openg2p.kafka.connect.transforms.TimestampConverterAdv$Value",
           "transforms.tsconvert03.field": "write_date",
           "transforms.tsconvert03.input.type": "micro_sec",
 
-          "transforms.tsconvert04.type": "io.mosip.kafka.connect.transforms.TimestampConverterAdv$Value",
+          "transforms.tsconvert04.type": "io.openg2p.kafka.connect.transforms.TimestampConverterAdv$Value",
           "transforms.tsconvert04.field": "date_approved",
           "transforms.tsconvert04.input.type": "days_epoch",
           "transforms.tsconvert04.output.format": "yyyy-MM-dd",
 
-          "transforms.join01.type": "io.mosip.kafka.connect.transforms.DynamicNewField$Value",
-          "transforms.join01.es.index": '\"$DB_PREFIX_INDEX.public.g2p_program_membership\"',
-          "transforms.join01.es.url": '\"$ES_URL\"',
+          "transforms.join01.type": "io.openg2p.kafka.connect.transforms.DynamicNewField$Value",
+          "transforms.join01.os.index": '\"$DB_PREFIX_INDEX.public.g2p_program_membership\"',
+          "transforms.join01.os.url": '\"$OS_URL\"',
           "transforms.join01.input.fields": "partner_id,program_id",
           "transforms.join01.input.default.values": "null,null",
-          "transforms.join01.es.input.fields": "partner_id,program_id",
-          "transforms.join01.es.output.field": "id",
+          "transforms.join01.os.input.fields": "partner_id,program_id",
+          "transforms.join01.os.output.field": "id",
           "transforms.join01.output.field": "program_membership_id",
 
-          "transforms.join02.type": "io.mosip.kafka.connect.transforms.DynamicNewField$Value",
-          "transforms.join02.es.index": '\"$DB_PREFIX_INDEX.public.g2p_program_assessment\"',
-          "transforms.join02.es.url": '\"$ES_URL\"',
+          "transforms.join02.type": "io.openg2p.kafka.connect.transforms.DynamicNewField$Value",
+          "transforms.join02.os.index": '\"$DB_PREFIX_INDEX.public.g2p_program_assessment\"',
+          "transforms.join02.os.url": '\"$OS_URL\"',
           "transforms.join02.input.fields": "program_membership_id",
           "transforms.join02.input.default.values": "null",
-          "transforms.join02.es.input.fields": "program_membership_id",
-          "transforms.join02.es.output.field": "registrant_create_datetime",
+          "transforms.join02.os.input.fields": "program_membership_id",
+          "transforms.join02.os.output.field": "registrant_create_datetime",
           "transforms.join02.output.field": "registrant_create_datetime",
 
-          "transforms.join03.type": "io.mosip.kafka.connect.transforms.DynamicNewField$Value",
-          "transforms.join03.es.index": '\"$DB_PREFIX_INDEX.public.g2p_program_assessment\"',
-          "transforms.join03.es.url": '\"$ES_URL\"',
+          "transforms.join03.type": "io.openg2p.kafka.connect.transforms.DynamicNewField$Value",
+          "transforms.join03.os.index": '\"$DB_PREFIX_INDEX.public.g2p_program_assessment\"',
+          "transforms.join03.os.url": '\"$OS_URL\"',
           "transforms.join03.input.fields": "program_membership_id",
           "transforms.join03.input.default.values": "null",
-          "transforms.join03.es.input.fields": "program_membership_id",
-          "transforms.join03.es.output.field": "membership_create_datetime",
+          "transforms.join03.os.input.fields": "program_membership_id",
+          "transforms.join03.os.output.field": "membership_create_datetime",
           "transforms.join03.output.field": "membership_create_datetime",
 
-          "transforms.join04.type": "io.mosip.kafka.connect.transforms.DynamicNewField$Value",
-          "transforms.join04.es.index": '\"$DB_PREFIX_INDEX.public.g2p_program_assessment\"',
-          "transforms.join04.es.url": '\"$ES_URL\"',
+          "transforms.join04.type": "io.openg2p.kafka.connect.transforms.DynamicNewField$Value",
+          "transforms.join04.os.index": '\"$DB_PREFIX_INDEX.public.g2p_program_assessment\"',
+          "transforms.join04.os.url": '\"$OS_URL\"',
           "transforms.join04.input.fields": "program_membership_id",
           "transforms.join04.input.default.values": "null",
-          "transforms.join04.es.input.fields": "program_membership_id",
-          "transforms.join04.es.output.field": "application_create_datetime",
+          "transforms.join04.os.input.fields": "program_membership_id",
+          "transforms.join04.os.output.field": "application_create_datetime",
           "transforms.join04.output.field": "application_create_datetime",
 
-          "transforms.join05.type": "io.mosip.kafka.connect.transforms.DynamicNewField$Value",
-          "transforms.join05.es.index": '\"$DB_PREFIX_INDEX.public.g2p_program_assessment\"',
-          "transforms.join05.es.url": '\"$ES_URL\"',
+          "transforms.join05.type": "io.openg2p.kafka.connect.transforms.DynamicNewField$Value",
+          "transforms.join05.os.index": '\"$DB_PREFIX_INDEX.public.g2p_program_assessment\"',
+          "transforms.join05.os.url": '\"$OS_URL\"',
           "transforms.join05.input.fields": "program_membership_id",
           "transforms.join05.input.default.values": "null",
-          "transforms.join05.es.input.fields": "program_membership_id",
-          "transforms.join05.es.output.field": "create_datetime",
+          "transforms.join05.os.input.fields": "program_membership_id",
+          "transforms.join05.os.output.field": "create_datetime",
           "transforms.join05.output.field": "assessment_create_datetime",
 
-          "transforms.tsSelect.type": "io.mosip.kafka.connect.transforms.TimestampSelector$Value",
+          "transforms.tsSelect.type": "io.openg2p.kafka.connect.transforms.TimestampSelector$Value",
           "transforms.tsSelect.ts.order": "write_date,create_date",
           "transforms.tsSelect.output.field": "@timestamp_gen"
       }
