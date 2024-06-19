@@ -95,7 +95,7 @@ public class DynamicNewFieldTest {
         list.add("fra");
 
         // profile.put("lang_code", list);
-        
+
         original.put("regcntr_id", "10001");
         original.put("lang_code", list);
         original.put("other", "test");

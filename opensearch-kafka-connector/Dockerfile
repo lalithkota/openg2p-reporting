@@ -31,4 +31,3 @@ COPY --from=builder /kafka-connect-transforms/target/debezium-*.jar /opt/kafka/c
 EXPOSE 8083
 
 CMD ["bin/connect-distributed.sh" , "config/connect-distributed.properties"]
-

@@ -3,4 +3,3 @@ This repository contains components for OpenG2P Reporting system. Refer to [Open
 
 # License
 This repository is licensed under [MPL-2.0](LICENSE).
-

@@ -106,7 +106,7 @@ public abstract class DynamicNewField<R extends ConnectRecord<R>> implements Tra
 
             // esClient = new RestHighLevelClient(RestClient.builder(HttpHost.create(this.esUrl)));
             HttpClientBuilder hClientBuilder = HttpClients.custom();
-            if(esSecurity!=null && !esSecurity.isEmpty() && "true".equals(esSecurity)) { 
+            if(esSecurity!=null && !esSecurity.isEmpty() && "true".equals(esSecurity)) {
                 CredentialsStore esCredStore = new BasicCredentialsProvider();
                 esCredStore.setCredentials(new AuthScope(null, -1), new UsernamePasswordCredentials(esUsername, esPassword.toCharArray()));
                 hClientBuilder.setDefaultCredentialsProvider(esCredStore);
@@ -142,7 +142,7 @@ public abstract class DynamicNewField<R extends ConnectRecord<R>> implements Tra
                 requestJson += "}}";
             }
             requestJson += "]}}}";
-            
+
             hGet.setEntity(new StringEntity(requestJson));
 
             JSONObject responseJson;
@@ -255,7 +255,7 @@ public abstract class DynamicNewField<R extends ConnectRecord<R>> implements Tra
         //     // control shouldn't reach here .. it shouldve thrown exception before or returned
         //     return "EMPTY";
         // }
-        
+
         @Override
         Object make(Object input){
             return this.makeQuery((List<Object>)input);
@@ -300,13 +300,13 @@ public abstract class DynamicNewField<R extends ConnectRecord<R>> implements Tra
         .define(INPUT_FIELDS_CONFIG, ConfigDef.Type.STRING, "", ConfigDef.Importance.HIGH, "Name of the field in the current index")
         .define(OUTPUT_FIELD_CONFIG, ConfigDef.Type.STRING, "", ConfigDef.Importance.HIGH, "Name to give to the new field")
         .define(DEFAULT_VALUE_CONFIG, ConfigDef.Type.STRING, "", ConfigDef.Importance.HIGH, "Default vlaues for input fields")
-    
+
         .define(ES_URL_CONFIG, ConfigDef.Type.STRING, "", ConfigDef.Importance.HIGH, "Installed Elasticsearch URL")
         .define(ES_INDEX_CONFIG, ConfigDef.Type.STRING, "", ConfigDef.Importance.HIGH, "Name of the index in ES to search")
         .define(ES_INPUT_FIELDS_CONFIG, ConfigDef.Type.STRING, "", ConfigDef.Importance.HIGH, "ES documents with given input field will be searched for. This field tells the key name")
         .define(ES_OUTPUT_FIELD_CONFIG, ConfigDef.Type.STRING, "", ConfigDef.Importance.HIGH, "If a successful match is made with the above input field+value, the value of this output field from the same document will be returned")
         .define(ES_INPUT_QUERY_ADD_KEYWORD, ConfigDef.Type.STRING, "true", ConfigDef.Importance.HIGH, "Should add the .keyword suffix while querying ES?")
-    
+
         .define(ES_SECURITY_ENABLED_CONFIG, ConfigDef.Type.STRING, "", ConfigDef.Importance.HIGH, "Is Elasticsearch security enabled?")
         .define(ES_USERNAME_CONFIG, ConfigDef.Type.STRING, "", ConfigDef.Importance.HIGH, "Elasticsearch Username")
         .define(ES_PASSWORD_CONFIG, ConfigDef.Type.STRING, "", ConfigDef.Importance.HIGH, "Elasticsearch Password");
@@ -317,9 +317,9 @@ public abstract class DynamicNewField<R extends ConnectRecord<R>> implements Tra
         AbstractConfig absconf = new AbstractConfig(CONFIG_DEF, configs, false);
 
         schemaUpdateCache = new SynchronizedCache<>(new LRUCache<Schema,Schema>(16));
-        
+
         String type = absconf.getString(TYPE_CONFIG);
-        
+
         String inputFieldBulk = absconf.getString(INPUT_FIELDS_CONFIG);
         String outputField = absconf.getString(OUTPUT_FIELD_CONFIG);
         String inputDefaultValuesBulk = absconf.getString(DEFAULT_VALUE_CONFIG);
@@ -454,7 +454,7 @@ public abstract class DynamicNewField<R extends ConnectRecord<R>> implements Tra
             }
             else{
                 if(!config.inputDefaultValues[i].equals("null")){
-                    valueList.add(config.inputDefaultValues[i]);                    
+                    valueList.add(config.inputDefaultValues[i]);
                 }
                 else{
                     nullValues = true;
@@ -505,6 +505,6 @@ public abstract class DynamicNewField<R extends ConnectRecord<R>> implements Tra
 
         return builder.build();
     }
-    
+
 
 }
