@@ -18,8 +18,22 @@ jobs:
       REPORTING_INIT_SERVICE_NAME: reporting-init-shell-tools
     steps:
       - uses: actions/checkout@v3
+      - id: files
+        uses: jitterbit/get-changed-files@v1
       - name: Docker build OS Kafka Connector
         run: |
+          OS_KAFKA_CONNECTOR_DOCKER_BUILD="false"
+          for changed_file in ${{ steps.files.outputs.all }}; do
+            if [[ ${changed_file} =~ ^[opensearch-kafka-connector] ]]; then
+              OS_KAFKA_CONNECTOR_DOCKER_BUILD="true"
+              break
+            fi
+          done
+          if [ "$OS_KAFKA_CONNECTOR_DOCKER_BUILD" = "true" ]; then
+            echo "Nothing to build!"
+            exit 0;
+          fi
+
           BRANCH_NAME=$(echo ${{ github.ref }} | sed -e 's,.*/\(.*\),\1,')
           OS_KAFKA_CONNECTOR_IMAGE_ID=$NAMESPACE/$OS_KAFKA_CONNECTOR_SERVICE_NAME
 
@@ -49,6 +63,18 @@ jobs:
           docker push ${{ env.OS_KAFKA_CONNECTOR_IMAGE_ID }}:${{ env.OS_KAFKA_CONNECTOR_VERSION }}
       - name: Docker build Reporting Init
         run: |
+          REPORTING_INIT_DOCKER_BUILD="false"
+          for changed_file in ${{ steps.files.outputs.all }}; do
+            if [[ ${changed_file} =~ ^[reporting-init-docker] ]]; then
+              REPORTING_INIT_DOCKER_BUILD="true"
+              break
+            fi
+          done
+          if [ "$REPORTING_INIT_DOCKER_BUILD" != "true" ]; then
+            echo "Nothing to build!"
+            exit 0;
+          fi
+
           BRANCH_NAME=$(echo ${{ github.ref }} | sed -e 's,.*/\(.*\),\1,')
           REPORTING_INIT_IMAGE_ID=$NAMESPACE/$REPORTING_INIT_SERVICE_NAME
 

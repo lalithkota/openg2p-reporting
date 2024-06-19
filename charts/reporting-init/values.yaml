@@ -117,7 +117,9 @@ extraVolumes: []
 extraVolumeMounts: []
 
 debeziumConnectorConfigMap: ""
+
 opensearchConnectorConfigMap: ""
+
 dashboardsConnectorConfigMap: ""
 
 gitConfig:
