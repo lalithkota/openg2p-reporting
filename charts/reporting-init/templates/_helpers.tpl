@@ -16,7 +16,7 @@ Render Env values section
 {{- end -}}
 
 {{- define "reporting-init.envVars" -}}
-{{- $envVars := merge (deepCopy .Values.envVars) (deepCopy .Values.envVarsFrom) -}}
+{{- $envVars := merge (deepCopy .Values.envVars) (deepCopy .Values.envVarsFrom) (.Values.gitConfig.enabled | ternary (deepCopy .Values.gitConfig.envVars) dict) -}}
 {{- include "reporting-init.baseEnvVars" (dict "envVars" $envVars "context" $) }}
 {{- end -}}
 

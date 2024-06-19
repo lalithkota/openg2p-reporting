@@ -327,6 +327,7 @@ extraVolumes: []
 ##
 extraVolumeMounts: []
 
+
 kafkaBootstrapServers: '{{ .Release.Name }}-kafka:9092'
 
 ## For full list of available environment variables,

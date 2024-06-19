@@ -1,1 +1,41 @@
-questions: []
+questions:
+- variable: gitConfig.enabled
+  description: This enables downloading connectors and other configuration from Git.
+  type: boolean
+  label: Download config from Git?
+
+- variable: gitConfig.repoUrl
+  description: Git Repository to download configs from. This must include username password if any.
+  type: string
+  label: Git Config Repository URL
+  show_if: "gitConfig.enabled=true"
+
+- variable: gitConfig.branch
+  description: Git Repository Branch to download configs from.
+  type: string
+  label: Git Config Repository Branch
+  show_if: "gitConfig.enabled=true"
+
+- variable: gitConfig.subDir
+  description: Subdirectory inside the Git Repository to take configs from.
+  type: string
+  label: Git Config Repository Subdirectory
+  show_if: "gitConfig.enabled=true"
+
+- variable: global.reportingInstallationName
+  description: If reporting infra is already installed, give the name of the installation here.
+  type: reference_service
+  label: Reporting Installation Name
+  group: Advanced Settings
+
+- variable: global.reportingOpensearchInstallationName
+  description: Give the name of the OpenSearch instance, with which opensearch-kafka-connector should connect to.
+  type: reference_service
+  label: OpenSearch Installation Name
+  group: Advanced Settings
+
+- variable: global.reportingPostgresqlInstallationName
+  description: Give the name of the Postgresql instance, with which debezium should connect to.
+  type: reference_service
+  label: Postgresql Installation Name
+  group: Advanced Settings
