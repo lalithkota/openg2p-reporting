@@ -1,5 +1,5 @@
 {
-    "name": "pbms_g2p_program_assessment_${DB_PREFIX_INDEX//-/_}",
+    "name": "g2p_program_assessment_${DB_PREFIX_INDEX//-/_}",
     "config": {
         "connector.class": "io.aiven.kafka.connect.opensearch.OpensearchSinkConnector",
         "connection.url": "${OPENSEARCH_URL}",

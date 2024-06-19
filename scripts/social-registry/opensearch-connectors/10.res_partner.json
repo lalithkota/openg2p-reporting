@@ -1,5 +1,5 @@
 {
-    "name": "sr_res_partner_${DB_PREFIX_INDEX//-/_}",
+    "name": "res_partner_${DB_PREFIX_INDEX//-/_}",
     "config": {
         "connector.class": "io.aiven.kafka.connect.opensearch.OpensearchSinkConnector",
         "connection.url": "${OPENSEARCH_URL}",

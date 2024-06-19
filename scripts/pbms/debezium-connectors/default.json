@@ -1,11 +1,11 @@
 {
-    "name": "pbms_${DB_PREFIX_INDEX//-/_}",
+    "name": "${DB_PREFIX_INDEX//-/_}_${DB_NAME}",
     "config": {
         "connector.class": "io.debezium.connector.postgresql.PostgresConnector",
         "plugin.name": "pgoutput",
         "publication.autocreate.mode": "filtered",
-        "slot.name": "dbz_pbms_${DB_NAME}_${DB_PREFIX_INDEX//-/_}",
-        "publication.name": "dbz_pub_pbms_${DB_NAME}_${DB_PREFIX_INDEX//-/_}",
+        "slot.name": "dbz_${DB_PREFIX_INDEX//-/_}_${DB_NAME}",
+        "publication.name": "dbz_pub_${DB_PREFIX_INDEX//-/_}_${DB_NAME}",
         "database.hostname": "${DB_HOSTNAME}",
         "database.port": "${DB_PORT}",
         "database.user": "${DB_USER}",

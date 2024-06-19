@@ -58,6 +58,8 @@ kafka:
 
 kafkaUi:
   enabled: true
+  # kafka.nameOverride will apply here too.
+
   basePath: ""
 
   kafkaBootstrapServers: '{{ tpl .Values.global.reportingKafkaInstallationName $ }}:9092'
