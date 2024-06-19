@@ -125,12 +125,22 @@ gitConfig:
   repoUrl: https://github.com/openg2p/openg2p-reporting
   branch: develop
   subDir: ""
+  envVars:
+    GIT_CONFIG_REPO_URL:
+      secretKeyRef:
+        name: '{{ include "common.names.fullname" . }}-git-config'
+        key: repoUrl
+    GIT_CONFIG_BRANCH:
+      secretKeyRef:
+        name: '{{ include "common.names.fullname" . }}-git-config'
+        key: branch
+    GIT_CONFIG_SUB_DIR:
+      secretKeyRef:
+        name: '{{ include "common.names.fullname" . }}-git-config'
+        key: subDir
 
 envVars:
   GIT_CONFIG_ENABLED: '{{ .Values.gitConfig.enabled | quote }}'
-  GIT_CONFIG_REPO_URL: '{{ tpl .Values.gitConfig.repoUrl $ }}'
-  GIT_CONFIG_BRANCH: '{{ tpl .Values.gitConfig.branch $ }}'
-  GIT_CONFIG_SUB_DIR: '{{ tpl .Values.gitConfig.subDir $ }}'
 
   DEBEZIUM_URL: '{{ tpl .Values.global.reportingDebeziumInstallationName $ }}'
   OS_KAFKA_CONNECTOR_URL: '{{ tpl .Values.global.reportingOsKafkaConnectorInstallationName $ }}'
