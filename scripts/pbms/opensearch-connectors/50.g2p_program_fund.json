@@ -1,10 +1,10 @@
 {
-    "name": "g2p_program_fund_${DB_PREFIX_INDEX//-/_}",
+    "name": "g2p_program_fund_${DB_PREFIX_INDEX}",
     "config": {
         "connector.class": "io.aiven.kafka.connect.opensearch.OpensearchSinkConnector",
         "connection.url": "${OPENSEARCH_URL}",
         "tasks.max": "1",
-        "topics": "${DB_PREFIX_INDEX//-/_}.public.g2p_program_fund",
+        "topics": "${DB_PREFIX_INDEX}.public.g2p_program_fund",
         "key.ignore": "false",
         "schema.ignore": "true",
         "key.converter": "org.apache.kafka.connect.json.JsonConverter",

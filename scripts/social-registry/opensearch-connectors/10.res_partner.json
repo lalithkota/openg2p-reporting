@@ -1,10 +1,10 @@
 {
-    "name": "res_partner_${DB_PREFIX_INDEX//-/_}",
+    "name": "res_partner_${DB_PREFIX_INDEX}",
     "config": {
         "connector.class": "io.aiven.kafka.connect.opensearch.OpensearchSinkConnector",
         "connection.url": "${OPENSEARCH_URL}",
         "tasks.max": "1",
-        "topics": "${DB_PREFIX_INDEX//-/_}.public.res_partner",
+        "topics": "${DB_PREFIX_INDEX}.public.res_partner",
         "key.ignore": "false",
         "schema.ignore": "true",
         "key.converter": "org.apache.kafka.connect.json.JsonConverter",

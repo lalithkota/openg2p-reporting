@@ -205,7 +205,9 @@ kafkaUi:
         - name: "admins"
           clusters: ["main"]
           subjects:
-            # FILL THIS
+            - provider: oauth
+              type: role
+              value: "Admin"
           permissions:
             - resource: applicationconfig
               actions: all
