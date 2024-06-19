@@ -1,0 +1,99 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ template "common.names.fullname" . }}
+  labels: {{- include "common.labels.standard" . | nindent 4 }}
+    {{- if .Values.commonLabels }}
+    {{- include "common.tplvalues.render" ( dict "value" .Values.commonLabels "context" $ ) | nindent 4 }}
+    {{- end }}
+  annotations:
+    "helm.sh/hook": post-install,post-upgrade
+    "helm.sh/hook-weight": "0"
+    "helm.sh/hook-delete-policy": before-hook-creation
+    {{- if .Values.commonAnnotations }}
+    {{- include "common.tplvalues.render" ( dict "value" .Values.commonAnnotations "context" $ ) | nindent 4 }}
+    {{- end }}
+spec:
+  {{- if .Values.backoffLimit }}
+  backoffLimit: {{ .Values.backoffLimit }}
+  {{- end }}
+  template:
+    metadata:
+      {{- if .Values.podAnnotations }}
+      annotations: {{- include "common.tplvalues.render" (dict "value" .Values.podAnnotations "context" $) | nindent 8}}
+      {{- end }}
+      labels: {{- include "common.labels.standard" . | nindent 8 }}
+        {{- if .Values.podLabels }}
+        {{- include "common.tplvalues.render" (dict "value" .Values.podLabels "context" $) | nindent 8 }}
+        {{- end }}
+    spec:
+      {{- include "common.images.pullSecrets" (dict "images" (list .Values.image) "global" .Values.global) | nindent 6 }}
+      {{- if .Values.serviceAccount.name }}
+      serviceAccountName: {{ .Values.serviceAccount.name }}
+      {{- end }}
+      {{- if .Values.podSecurityContext.enabled }}
+      securityContext: {{- omit .Values.podSecurityContext "enabled" | toYaml | nindent 8 }}
+      {{- end }}
+      restartPolicy: Never
+      {{- if .Values.initContainers }}
+      initContainers:
+        {{- include "common.tplvalues.render" (dict "value" .Values.initContainers "context" $) | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: reporting-init
+          image: {{ include "common.images.image" (dict "imageRoot" .Values.image "global" .Values.global) }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          {{- include "reporting-init.command" . | nindent 10 }}
+          {{- if .Values.containerSecurityContext.enabled }}
+          securityContext: {{- omit .Values.containerSecurityContext "enabled" | toYaml | nindent 12 }}
+          {{- end }}
+          env: {{- include "reporting-init.envVars" . | nindent 12 }}
+          volumeMounts:
+            {{- if .Values.startUpCommand }}
+            - name: start-up-command-config-map
+              mountPath: /reporting-init/startup-command.sh
+              subPath: startup-command.sh
+            {{- end }}
+            {{- if .Values.debeziumConnectorConfigMap }}
+            - name: debezium-conn-config-map
+              mountPath: /reporting-init/config/debezium-connectors
+            {{- end }}
+            {{- if .Values.opensearchConnectorConfigMap }}
+            - name: os-kafka-conn-config-map
+              mountPath: /reporting-init/config/opensearch-connectors
+            {{- end }}
+            {{- if .Values.dashboardsConnectorConfigMap }}
+            - name: dashboards-config-map
+              mountPath: /reporting-init/config/opensearch-dashboards
+            {{- end }}
+            {{- if .Values.extraVolumeMounts }}
+            {{- include "common.tplvalues.render" (dict "value" .Values.extraVolumeMounts "context" $) | nindent 12 }}
+            {{- end }}
+        {{- if .Values.sidecars }}
+        {{- include "common.tplvalues.render" ( dict "value" .Values.sidecars "context" $) | nindent 8 }}
+        {{- end }}
+      volumes:
+        {{- if .Values.startUpCommand }}
+        - name: start-up-command-config-map
+          configMap:
+            name: {{ include "common.names.fullname" . }}-startup
+            defaultMode: 0755
+        {{- end }}
+        {{- if .Values.debeziumConnectorConfigMap }}
+        - name: debezium-conn-config-map
+          configMap:
+            name: {{ .Values.debeziumConnectorConfigMap }}
+        {{- end }}
+        {{- if .Values.opensearchConnectorConfigMap }}
+        - name: os-kafka-conn-config-map
+          configMap:
+            name: {{ .Values.opensearchConnectorConfigMap }}
+        {{- end }}
+        {{- if .Values.dashboardsConnectorConfigMap }}
+        - name: dashboards-config-map
+          configMap:
+            name: {{ .Values.dashboardsConnectorConfigMap }}
+        {{- end }}
+        {{- if .Values.extraVolumes }}
+        {{- include "common.tplvalues.render" (dict "value" .Values.extraVolumes "context" $) | nindent 8 }}
+        {{- end }}

@@ -1,0 +1,230 @@
+## Global Docker image parameters
+## Please, note that this will override the image parameters, including dependencies, configured to use the global value
+## Current available global Docker image parameters: imageRegistry and imagePullSecrets
+##
+# global:
+#   imageRegistry: myRegistryName
+#   imagePullSecrets:
+#     - myRegistryKeySecretName
+#   storageClass: myStorageClass
+global:
+  reportingInstallationName: '{{ .Release.Name }}-reporting'
+
+  reportingDebeziumInstallationName: '{{ tpl .Values.global.reportingInstallationName $ }}-debezium'
+  reportingOsKafkaConnectorInstallationName: '{{ tpl .Values.global.reportingInstallationName $ }}-os-kafka-connector'
+
+  reportingOpensearchInstallationName: '{{ tpl .Values.global.reportingInstallationName $ }}-opensearch'
+  reportingPostgresqlInstallationName: '{{ .Release.Name }}-postgresql'
+
+## Add labels to all the deployed resources
+##
+commonLabels: {}
+
+## Add annotations to all the deployed resources
+##
+commonAnnotations: {}
+
+backoffLimit: 5
+
+image:
+  registry: docker.io
+  repository: openg2p/reporting-init-shell-tools
+  tag: develop
+  ## Specify a imagePullPolicy
+  ## Defaults to 'Always' if image tag is 'latest', else set to 'IfNotPresent'
+  ## ref: http://kubernetes.io/docs/user-guide/images/#pre-pulling-images
+  ##
+  pullPolicy: Always
+  ## Optionally specify an array of imagePullSecrets.
+  ## Secrets must be manually created in the namespace.
+  ## ref: https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/
+  ##
+  # pullSecrets:
+  #   - myRegistryKeySecretName
+
+## Command and args for running the container (set to default if not set). Use array form
+##
+command: []
+args: []
+
+## ref: https://kubernetes.io/docs/tasks/configure-pod-container/security-context/#set-the-security-context-for-a-container
+## Clamav container already runs as 'mosip' user, so we may not need to enable this
+containerSecurityContext:
+  enabled: false
+  runAsUser: 1001
+  runAsNonRoot: true
+
+## ref: https://kubernetes.io/docs/tasks/configure-pod-container/security-context/#set-the-security-context-for-a-pod
+##
+podSecurityContext:
+  enabled: false
+  fsGroup: 1001
+
+## Pod extra labels
+## ref: https://kubernetes.io/docs/concepts/overview/working-with-objects/labels/
+##
+podLabels: {}
+
+## Annotations for server pods.
+## ref: https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations/
+##
+podAnnotations:
+  sidecar.istio.io/inject: False
+
+## Add init containers to the  pods.
+## Example:
+## initContainers:
+##   - name: your-image-name
+##     image: your-image
+##     imagePullPolicy: Always
+##     ports:
+##       - name: portname
+##         containerPort: 1234
+##
+initContainers: []
+
+## Add sidecars to the  pods.
+## Example:
+## sidecars:
+##   - name: your-image-name
+##     image: your-image
+##     imagePullPolicy: Always
+##     ports:
+##       - name: portname
+##         containerPort: 1234
+##
+sidecars: []
+
+## Specifies whether RBAC resources should be created
+##
+rbac:
+  create: true
+
+## Specifies whether a ServiceAccount should be created
+##
+serviceAccount:
+  ## The name of the ServiceAccount to use.
+  ## If not set and create is true, a name is generated using the fullname template
+  ##
+  name:
+
+## Extra volumes to add to the deployment
+##
+extraVolumes: []
+
+## Extra volume mounts to add to the container
+##
+extraVolumeMounts: []
+
+debeziumConnectorConfigMap: ""
+opensearchConnectorConfigMap: ""
+dashboardsConnectorConfigMap: ""
+
+gitConfig:
+  enabled: true
+  repoUrl: https://github.com/openg2p/openg2p-reporting
+  branch: develop
+  subDir: ""
+
+envVars:
+  GIT_CONFIG_ENABLED: '{{ .Values.gitConfig.enabled | quote }}'
+  GIT_CONFIG_REPO_URL: '{{ tpl .Values.gitConfig.repoUrl $ }}'
+  GIT_CONFIG_BRANCH: '{{ tpl .Values.gitConfig.branch $ }}'
+  GIT_CONFIG_SUB_DIR: '{{ tpl .Values.gitConfig.subDir $ }}'
+
+  DEBEZIUM_URL: '{{ tpl .Values.global.reportingDebeziumInstallationName $ }}'
+  OS_KAFKA_CONNECTOR_URL: '{{ tpl .Values.global.reportingOsKafkaConnectorInstallationName $ }}'
+
+  DB_HOSTNAME: '{{ tpl .Values.global.reportingPostgresqlInstallationName $ }}'
+  DB_PORT: 5432
+  DB_USER: postgres
+  DB_NAME: '' # To be filled
+  DB_PREFIX_INDEX: '{{ .Release.Namespace }}'
+  DEFAULT_DEBEZIUM_CONNECTOR_HEARTBEAT_MS: 5000
+
+  OPENSEARCH_URL: 'https://{{ tpl .Values.global.reportingOpensearchInstallationName $ }}:9200'
+
+  OPENSEARCH_SECURITY_ENABLED: true
+  OPENSEARCH_USERNAME: 'logstash'
+
+  dollar: '$'
+
+envVarsFrom:
+  DB_PASS:
+    secretKeyRef:
+      name: '{{ tpl .Values.global.reportingPostgresqlInstallationName $ }}'
+      key: postgres-passsword
+  OPENSEARCH_PASSWORD:
+    secretKeyRef:
+      name: '{{ tpl .Values.global.reportingOpensearchInstallationName $ }}'
+      key: 'logstash-password'
+
+startUpCommand: |-
+  #!/usr/bin/env bash
+  if [ "$GIT_CONFIG_ENABLED" = "true" ]; then
+    cd /tmp
+    git clone -d "$GIT_CONFIG_BRANCH" --depth 1 "$GIT_CONFIG_REPO_URL" config
+    config_dir=config/${GIT_CONFIG_SUB_DIR}
+    sudo mv $config_dir /reporting-init/config
+  fi
+
+  cd /reporting-init/config
+
+  function contains() {
+    arr=$1
+    value_to_check=$2
+    for conn in $arr ; do if [ "$conn" = "$value_to_check" ]; then echo "yes"; fi ; done
+  }
+
+  echo "==> DEBEZIUM CONNECTORS"
+  if [ -d debezium-connectors ]; then
+    debezium_existing_connectors_list=$(curl -s $DEBEZIUM_URL/connectors | jq -cr '.[]')
+    debezium_new_connectors_list=()
+    for debezium_conn in debezium-connectors/* ; do
+      debezium_connector_config=$(envsubst < $debezium_conn | jq -cr '.')
+      debezium_connector_name=$(echo $debezium_connector_config | jq -cr '.name')
+      debezium_new_connectors_list+=("$debezium_connector_name")
+
+      if_exists=$(contains $debezium_existing_connectors_list $debezium_connector_name)
+      if [ -z "$if_exists" ]; then
+        curl -s -XPOST -H 'Content-Type: application/json' $DEBEZIUM_URL/connectors -d "$debezium_connector_config"
+      else
+        curl -s -XPUT -H 'Content-Type: application/json' $DEBEZIUM_URL/connectors/${debezium_connector_name}/config -d "$(echo $debezium_connector_config | jq -cr '.config')"
+      fi
+    done
+    debezium_new_connectors_list=${debezium_new_connectors_list[@]}
+    for connector_to_delete in $debezium_existing_connectors_list; do
+      if_exists=$(contains $debezium_new_connectors_list $connector_to_delete)
+      if [ -z "$if_exists" ]; then
+        curl -s -XDELETE $DEBEZIUM_URL/connectors/${connector_to_delete}
+      fi
+    done
+  fi
+
+  echo "==> OPENSEARCH CONNECTORS"
+  if [ -d opensearch-connectors ]; then
+    os_existing_connectors_list=$(curl -s $OS_KAFKA_CONNECTOR_URL/connectors | jq -cr '.[]')
+    os_new_connectors_list=()
+    for os_conn in opensearch-connectors/* ; do
+      os_connector_config=$(envsubst < $os_conn | jq -cr '.')
+      os_connector_name=$(echo $os_connector_config | jq -cr '.name')
+      os_new_connectors_list+=("$os_connector_name")
+
+      if_exists=$(contains $os_existing_connectors_list $os_connector_name)
+      if [ -z "$if_exists" ]; then
+        curl -s -XPOST -H 'Content-Type: application/json' $OS_KAFKA_CONNECTOR_URL/connectors -d "$os_connector_config"
+      else
+        curl -s -XPUT -H 'Content-Type: application/json' $OS_KAFKA_CONNECTOR_URL/connectors/${os_connector_name}/config -d "$(echo $os_connector_config | jq -cr '.config')"
+      fi
+    done
+    os_new_connectors_list=${os_new_connectors_list[@]}
+    for connector_to_delete in $os_existing_connectors_list; do
+      if_exists=$(contains $os_new_connectors_list $connector_to_delete)
+      if [ -z "$if_exists" ]; then
+        curl -s -XDELETE $OS_KAFKA_CONNECTOR_URL/connectors/${connector_to_delete}
+      fi
+    done
+  fi
+
+  echo "==> OPENSEARCH DASHBOARDS"
+  ## TODO: Load dashboards also from this script

@@ -1,0 +1,23 @@
+apiVersion: v2
+name: reporting
+description: A Helm chart for OpenG2P Reporting module.
+type: application
+version: 0.0.0-develop
+dependencies:
+- name: debezium
+  version: 2.6.0
+  condition: debezium.enabled
+- name: kafka
+  repository: oci://registry-1.docker.io/bitnamicharts
+  version: 29.x.x
+  condition: kafka.enabled
+- name: opensearch
+  version: 1.2.0
+  repository: oci://registry-1.docker.io/bitnamicharts
+  condition: opensearch.enabled
+- name: opensearch-kafka-connector
+  version: 0.0.0-develop
+  condition: opensearch-kafka-connector.enabled
+icon: https://openg2p.github.io/openg2p-helm/openg2p-logo.png
+annotations:
+  catalog.cattle.io/display-name: "OpenG2P Reporting"

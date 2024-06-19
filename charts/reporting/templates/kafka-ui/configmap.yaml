@@ -1,0 +1,18 @@
+{{- if .Values.kafka.enabled }}
+{{- if .Values.kafkaUi.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "common.names.fullname" .Subcharts.kafka }}-ui
+  labels: {{- include "common.labels.standard" . | nindent 4 }}
+    {{- if .Values.commonLabels }}
+    {{- include "common.tplvalues.render" ( dict "value" .Values.commonLabels "context" $ ) | nindent 4 }}
+    {{- end }}
+  {{- if .Values.commonAnnotations }}
+  annotations: {{- include "common.tplvalues.render" ( dict "value" .Values.commonAnnotations "context" $ ) | nindent 4 }}
+  {{- end }}
+data:
+  config.yml: |-
+    {{- include "common.tplvalues.render" (dict "value" .Values.kafkaUi.configYml "context" $) | nindent 4 }}
+{{- end }}
+{{- end }}

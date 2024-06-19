@@ -1,0 +1,78 @@
+name: Build Docker and Push
+
+on:
+  push:
+    branches:
+      - "**"
+    tags-ignore:
+      - '**'
+  workflow_dispatch:
+
+jobs:
+  docker-build:
+    name: Docker Build and Push
+    runs-on: ubuntu-latest
+    env:
+      NAMESPACE: ${{ secrets.docker_hub_organisation || 'openg2p' }}
+      OS_KAFKA_CONNECTOR_SERVICE_NAME: reporting-opensearch-kafka-connector
+      REPORTING_INIT_SERVICE_NAME: reporting-init-shell-tools
+    steps:
+      - uses: actions/checkout@v3
+      - name: Docker build OS Kafka Connector
+        run: |
+          BRANCH_NAME=$(echo ${{ github.ref }} | sed -e 's,.*/\(.*\),\1,')
+          OS_KAFKA_CONNECTOR_IMAGE_ID=$NAMESPACE/$OS_KAFKA_CONNECTOR_SERVICE_NAME
+
+          # Change all uppercase to lowercase
+          OS_KAFKA_CONNECTOR_IMAGE_ID=$(echo $OS_KAFKA_CONNECTOR_IMAGE_ID | tr '[A-Z]' '[a-z]')
+          OS_KAFKA_CONNECTOR_VERSION=$BRANCH_NAME
+          if [[ $BRANCH_NAME == master || $BRANCH_NAME == main ]]; then
+            OS_KAFKA_CONNECTOR_VERSION=develop
+          fi
+          echo OS_KAFKA_CONNECTOR_IMAGE_ID=$OS_KAFKA_CONNECTOR_IMAGE_ID
+          echo OS_KAFKA_CONNECTOR_VERSION=$OS_KAFKA_CONNECTOR_VERSION
+          echo OS_KAFKA_CONNECTOR_IMAGE_ID=$OS_KAFKA_CONNECTOR_IMAGE_ID >> $GITHUB_ENV
+          echo OS_KAFKA_CONNECTOR_VERSION=$OS_KAFKA_CONNECTOR_VERSION >> $GITHUB_ENV
+
+          cd opensearch-kafka-connector
+          docker build . \
+            --file Dockerfile \
+            --tag $OS_KAFKA_CONNECTOR_IMAGE_ID:$OS_KAFKA_CONNECTOR_VERSION
+          if [[ '${{ secrets.docker_hub_token }}' != '' && '${{ secrets.docker_hub_actor }}' != '' ]]; then
+            export OS_KAFKA_CONNECTOR_DOCKER_PUSH="true"
+            echo OS_KAFKA_CONNECTOR_DOCKER_PUSH=$OS_KAFKA_CONNECTOR_DOCKER_PUSH >> $GITHUB_ENV
+          fi
+      - name: Docker push OS Kafka Connector
+        if: env.OS_KAFKA_CONNECTOR_DOCKER_PUSH == 'true'
+        run: |
+          echo "${{ secrets.docker_hub_token }}" | docker login -u ${{ secrets.docker_hub_actor }} --password-stdin
+          docker push ${{ env.OS_KAFKA_CONNECTOR_IMAGE_ID }}:${{ env.OS_KAFKA_CONNECTOR_VERSION }}
+      - name: Docker build Reporting Init
+        run: |
+          BRANCH_NAME=$(echo ${{ github.ref }} | sed -e 's,.*/\(.*\),\1,')
+          REPORTING_INIT_IMAGE_ID=$NAMESPACE/$REPORTING_INIT_SERVICE_NAME
+
+          # Change all uppercase to lowercase
+          REPORTING_INIT_IMAGE_ID=$(echo $REPORTING_INIT_IMAGE_ID | tr '[A-Z]' '[a-z]')
+          REPORTING_INIT_VERSION=$BRANCH_NAME
+          if [[ $BRANCH_NAME == master || $BRANCH_NAME == main ]]; then
+            REPORTING_INIT_VERSION=develop
+          fi
+          echo REPORTING_INIT_IMAGE_ID=$REPORTING_INIT_IMAGE_ID
+          echo REPORTING_INIT_VERSION=$REPORTING_INIT_VERSION
+          echo REPORTING_INIT_IMAGE_ID=$REPORTING_INIT_IMAGE_ID >> $GITHUB_ENV
+          echo REPORTING_INIT_VERSION=$REPORTING_INIT_VERSION >> $GITHUB_ENV
+
+          cd reporting-init-docker
+          docker build . \
+            --file Dockerfile \
+            --tag $REPORTING_INIT_IMAGE_ID:$REPORTING_INIT_VERSION
+          if [[ '${{ secrets.docker_hub_token }}' != '' && '${{ secrets.docker_hub_actor }}' != '' ]]; then
+            export REPORTING_INIT_DOCKER_PUSH="true"
+            echo REPORTING_INIT_DOCKER_PUSH=$REPORTING_INIT_DOCKER_PUSH >> $GITHUB_ENV
+          fi
+      - name: Docker push Reporting Init
+        if: env.REPORTING_INIT_DOCKER_PUSH == 'true'
+        run: |
+          echo "${{ secrets.docker_hub_token }}" | docker login -u ${{ secrets.docker_hub_actor }} --password-stdin
+          docker push ${{ env.REPORTING_INIT_IMAGE_ID }}:${{ env.REPORTING_INIT_VERSION }}
