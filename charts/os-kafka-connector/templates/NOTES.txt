@@ -1,3 +1,0 @@
-This chart installs a OpenSearch Kafka Connect
-
-https://docs.openg2p.org/deployment/helm-charts

@@ -46,9 +46,9 @@ service:
   externalTrafficPolicy: Cluster
 
 image:
-  registry: quay.io
-  repository: debezium/connect
-  tag: 2.6.2.Final
+  registry: docker.io
+  repository: openg2p/reporting-opensearch-kafka-connector
+  tag: develop
   ## Specify a imagePullPolicy
   ## Defaults to 'Always' if image tag is 'latest', else set to 'IfNotPresent'
   ## ref: http://kubernetes.io/docs/user-guide/images/#pre-pulling-images
@@ -330,22 +330,22 @@ extraVolumeMounts: []
 kafkaBootstrapServers: '{{ .Release.Name }}-kafka:9092'
 
 ## For full list of available environment variables,
-## refer to https://github.com/debezium/container-images/tree/main/connect/2.6.
+## refer to https://kafka.apache.org/documentation.
 ## Metrics based variables, like JMX settings, can be set from "metrics.envVars".
 envVars:
-  HEAP_OPTS: '{{ tpl .Values.heapOpts $ }}'
-  BOOTSTRAP_SERVERS: '{{ tpl .Values.kafkaBootstrapServers $ }}'
-  GROUP_ID: 1
+  KAFKA_HEAP_OPTS: '{{ tpl .Values.heapOpts $ }}'
+  CONNECT_BOOTSTRAP_SERVERS: '{{ tpl .Values.kafkaBootstrapServers $ }}'
+  CONNECT_GROUP_ID: 1
 
-  HOST_NAME: "0.0.0.0"
-  PORT: '{{ .Values.containerPort }}'
+  CONNECT_HOST_NAME: '0.0.0.0'
+  CONNECT_REST_PORT: '{{ .Values.containerPort }}'
 
   # TODO: Evaluate the ADVERTISED options
-  ADVERTISED_HOST_NAME: '{{ include "common.names.fullname" . }}'
-  ADVERTISED_PORT: '{{ .Values.service.port }}'
+  CONNECT_REST_ADVERTISED_HOST_NAME: '{{ include "common.names.fullname" . }}'
+  CONNECT_REST_ADVERTISED_PORT: '{{ .Values.service.port }}'
 
-  CONFIG_STORAGE_TOPIC: '{{ include "common.names.name" . }}-configs'
-  OFFSET_STORAGE_TOPIC: '{{ include "common.names.name" . }}-offsets'
-  STATUS_STORAGE_TOPIC: '{{ include "common.names.name" . }}-status'
+  CONNECT_CONFIG_STORAGE_TOPIC: '{{ include "common.names.name" . }}-configs'
+  CONNECT_OFFSET_STORAGE_TOPIC: '{{ include "common.names.name" . }}-offsets'
+  CONNECT_STATUS_STORAGE_TOPIC: '{{ include "common.names.name" . }}-status'
 
 envVarsFrom: {}

@@ -1,3 +1,3 @@
-# opensearch-debezium Helm Chart
+# Debezium
 
-This chart bootstraps a deployment of a opensearch-debezium
+Helm chart for installing Debezium.

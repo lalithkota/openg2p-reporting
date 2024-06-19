@@ -3,21 +3,21 @@ name: reporting
 description: A Helm chart for OpenG2P Reporting module.
 type: application
 version: 0.0.0-develop
-appVersion: ""
 dependencies:
-- name: debezium-helm-chart
-  alias: debezium
-  repository: "https://confluentinc.github.io/cp-helm-charts/"
-  version: ">= 0.6.1"
-  condition: confluentinc.enabled
+- name: debezium
+  version: 2.6.0
+  condition: debezium.enabled
 - name: kafka
-  alias: bitnami-kafka
-  repository: "https://charts.bitnami.com/bitnami"
-  version: ">= 14.0.3"
-  condition: bitnami-kafka.enabled
-- name: os-kafka-connector
+  repository: oci://registry-1.docker.io/bitnamicharts
+  version: 29.x.x
+  condition: kafka.enabled
+- name: opensearch
+  version: 1.2.0
+  repository: oci://registry-1.docker.io/bitnamicharts
+  condition: opensearch.enabled
+- name: opensearch-kafka-connector
   version: 0.0.0-develop
-  condition: os-kafka-connector.enabled
+  condition: opensearch-kafka-connector.enabled
 icon: https://openg2p.github.io/openg2p-helm/openg2p-logo.png
 annotations:
   catalog.cattle.io/display-name: "OpenG2P Reporting"

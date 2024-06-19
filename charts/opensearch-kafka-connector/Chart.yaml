@@ -1,8 +1,8 @@
 apiVersion: v2
-name: debezium
-description: Debezium Helm chart
+name: opensearch-kafka-connector
+description: OpenSearch Kafka Connector Helm chart
 type: application
-version: 2.6.0
+version: 0.0.0-develop
 dependencies:
 - name: common
   repository: oci://registry-1.docker.io/bitnamicharts
@@ -12,4 +12,4 @@ maintainers:
     name: OpenG2P
 icon: https://openg2p.github.io/openg2p-helm/openg2p-logo.png
 annotations:
-  catalog.cattle.io/display-name: "Debezium"
+  catalog.cattle.io/display-name: "OpenSearch Kafka Connector"

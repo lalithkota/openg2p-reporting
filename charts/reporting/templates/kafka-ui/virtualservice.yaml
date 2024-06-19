@@ -1,0 +1,42 @@
+{{- if .Values.kafka.enabled }}
+{{- if .Values.kafkaUi.enabled }}
+{{- if .Values.kafkaUi.istio.enabled }}
+{{- if .Values.kafkaUi.istio.virtualservice.enabled }}
+apiVersion: networking.istio.io/v1alpha3
+kind: VirtualService
+metadata:
+  name: {{ include "common.names.fullname" .Subcharts.kafka }}-ui
+  labels: {{- include "common.labels.standard" . | nindent 4 }}
+    {{- if .Values.commonLabels }}
+    {{- include "common.tplvalues.render" ( dict "value" .Values.commonLabels "context" $ ) | nindent 4 }}
+    {{- end }}
+  {{- if .Values.commonAnnotations }}
+  annotations: {{- include "common.tplvalues.render" ( dict "value" .Values.commonAnnotations "context" $ ) | nindent 4 }}
+  {{- end }}
+spec:
+  hosts:
+  - {{ default .Values.global.reportingKafkaHostname .Values.kafkaUi.istio.virtualservice.host | quote }}
+  gateways:
+  - {{ default (include "common.names.fullname" .) .Values.kafkaUi.istio.virtualservice.gateway }}
+  http:
+  - headers:
+      request:
+        set:
+          x-forwarded-host: {{ default .Values.global.reportingKafkaHostname .Values.kafkaUi.istio.virtualservice.host | quote }}
+          x-forwarded-proto: https
+    match:
+    - uri:
+        prefix: {{ .Values.kafkaUi.istio.virtualservice.prefix }}
+    {{- if .Values.kafkaUi.istio.virtualservice.rewriteUri }}
+    rewrite:
+      uri: {{ .Values.kafkaUi.istio.virtualservice.rewriteUri }}
+    {{- end }}
+    route:
+    - destination:
+        host: {{ include "common.tplvalues.render" (dict "value" .Values.kafkaUi.istio.virtualservice.destination "context" $) }}
+        port:
+          number: {{ include "common.tplvalues.render" (dict "value" .Values.kafkaUi.istio.virtualservice.destinationPort "context" $) }}
+{{- end }}
+{{- end }}
+{{- end }}
+{{- end }}

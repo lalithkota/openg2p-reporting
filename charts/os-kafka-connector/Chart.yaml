@@ -1,5 +1,0 @@
-apiVersion: v2
-name: os-kafka-connector
-description: A Helm chart for OpenG2P opensearch-kafka-connector
-type: application
-version: 0.0.0-develop

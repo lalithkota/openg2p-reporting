@@ -1,0 +1,28 @@
+{{- if .Values.opensearch.enabled }}
+{{- if .Values.opensearch.istio.enabled }}
+{{- if .Values.opensearch.istio.virtualservice.enabled }}
+apiVersion: networking.istio.io/v1alpha3
+kind: VirtualService
+metadata:
+  name: {{ include "common.names.fullname" .Subcharts.opensearch }}
+  labels:
+    {{- include "socialRegistry.labels" . | nindent 4 }}
+spec:
+  hosts:
+  - {{ default .Values.global.opensearchHostname .Values.opensearch.istio.virtualservice.host | quote }}
+  gateways:
+  - {{ default (include "socialRegistry.fullname" .) .Values.opensearch.istio.virtualservice.gateway }}
+  http:
+  - headers:
+      request:
+        set:
+          x-forwarded-host: {{ default .Values.global.opensearchHostname .Values.opensearch.istio.virtualservice.host | quote }}
+          x-forwarded-proto: https
+    route:
+    - destination:
+        host: {{ tpl .Values.opensearch.istio.virtualservice.destination $ }}
+        port:
+          number: {{ tpl .Values.opensearch.istio.virtualservice.destinationPort $ }}
+{{- end }}
+{{- end }}
+{{- end }}

@@ -21,7 +21,7 @@ spec:
     metadata:
       annotations:
         {{- if or .Values.podAnnotations .Values.metrics.enabled }}
-        {{- include "debezium.podAnnotations" . | nindent 8 }}
+        {{- include "opensearch-kafka-connector.podAnnotations" . | nindent 8 }}
         {{- end }}
       labels: {{- include "common.labels.standard" . | nindent 8 }}
         {{- if .Values.podLabels }}
@@ -58,7 +58,7 @@ spec:
         {{- include "common.tplvalues.render" (dict "value" .Values.initContainers "context" $) | nindent 8 }}
       {{- end }}
       containers:
-        - name: debezium-connect
+        - name: opensearch-kafka-connect
           image: {{ include "common.images.image" (dict "imageRoot" .Values.image "global" .Values.global) }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           {{- if .Values.lifecycleHooks }}
@@ -74,7 +74,7 @@ spec:
           args: {{- include "common.tplvalues.render" (dict "value" .Values.args "context" $) | nindent 12 }}
           {{- end }}
           env:
-            {{- include "debezium.envVars" . | nindent 12 }}
+            {{- include "opensearch-kafka-connector.envVars" . | nindent 12 }}
           ports:
             - name: http
               containerPort: {{ .Values.containerPort }}

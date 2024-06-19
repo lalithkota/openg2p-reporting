@@ -1,7 +1,7 @@
 {{/*
 Return podAnnotations
 */}}
-{{- define "debezium.podAnnotations" -}}
+{{- define "opensearch-kafka-connector.podAnnotations" -}}
 {{- if .Values.podAnnotations }}
 {{ include "common.tplvalues.render" (dict "value" .Values.podAnnotations "context" $) }}
 {{- end }}
@@ -13,7 +13,7 @@ Return podAnnotations
 {{/*
 Render Env values section
 */}}
-{{- define "debezium.baseEnvVars" -}}
+{{- define "opensearch-kafka-connector.baseEnvVars" -}}
 {{- $context := .context -}}
 {{- range $k, $v := .envVars }}
 - name: {{ $k }}
@@ -27,7 +27,7 @@ Render Env values section
 {{- end }}
 {{- end -}}
 
-{{- define "debezium.envVars" -}}
+{{- define "opensearch-kafka-connector.envVars" -}}
 {{- $envVars := merge (deepCopy .Values.envVars) (deepCopy .Values.envVarsFrom) (.Values.metrics.enabled | ternary .Values.metrics.envVars dict) -}}
-{{- include "debezium.baseEnvVars" (dict "envVars" $envVars "context" $) }}
+{{- include "opensearch-kafka-connector.baseEnvVars" (dict "envVars" $envVars "context" $) }}
 {{- end -}}

@@ -12,6 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       SKIP: 'FALSE'
+      RANCHER_CHART_FILTER: "openg2p.org/add-to-rancher"
     defaults:
       run:
         shell: bash
@@ -43,17 +44,24 @@ jobs:
           echo "::warning::No Charts to publish";
           echo "SKIP=TRUE" >> $GITHUB_ENV
         else
+          RANCHER_CHARTS=()
           while IFS= read -r chartpath; do
             echo "chartpath: $chartpath"
             chartname=$(basename "$chartpath")
             echo "Chartname: $chartname"
+            helm dep up charts/$chartpath
             helm package charts/$chartpath
+            is_rancher_chart=$(grep "$RANCHER_CHART_FILTER" charts/${chartpath%*/}/Chart.yaml || true)
+            if [ -n "$is_rancher_chart" ]; then
+              RANCHER_CHARTS+=("$chartname")
+            fi
           done < charts-list.txt
+          echo "RANCHER_CHARTS=${RANCHER_CHARTS[@]}" >> $GITHUB_ENV
           rm charts-list.txt
         fi
 
         shopt -s nocasematch
-        if [[ '${{ github.repository_owner }}' == 'OpenG2P' ]]; then
+        if [[ '${{ github.repository_owner }}' != 'OpenG2P' ]]; then
           echo "SKIP=TRUE" >> $GITHUB_ENV
         fi
     - name: Upload tar as Artifact
@@ -80,8 +88,14 @@ jobs:
 
     - name: Update index.yaml
       run: |
-        git status
         helm repo index --url https://openg2p.github.io/openg2p-helm/ .
+        for chartname in $RANCHER_CHARTS; do
+          cp ${chartname}*.tgz rancher/
+        done
+        helm repo index --url https://openg2p.github.io/openg2p-helm/ --merge rancher/index.yaml rancher
+        for chartname in $RANCHER_CHARTS; do
+          rm rancher/${chartname}*.tgz
+        done
       if: env.SKIP != 'TRUE'
 
     - name: Commit Changes to repository
@@ -91,6 +105,6 @@ jobs:
         author_name: openg2pbot
         author_email: bot@openg2p.org
         default_author: user_info
-        message: 'added spar helm charts for publish openg2p/openg2p-spar-deployment@${{ github.sha }}'
-        add: './*.tgz ./index.yaml'
+        message: 'added social registry helm charts for publish openg2p/openg2p-reporting@${{ github.sha }}'
+        add: './*.tgz ./index.yaml rancher/index.yaml'
       if: env.SKIP != 'TRUE'

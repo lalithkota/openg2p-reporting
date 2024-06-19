@@ -1,0 +1,38 @@
+{{- if .Values.opensearch.enabled  }}
+{{- if .Values.opensearch.istio.enabled  }}
+{{- if .Values.opensearch.istio.gateway.enabled  }}
+apiVersion: networking.istio.io/v1beta1
+kind: Gateway
+metadata:
+  name: {{ include "common.names.fullname" .Subcharts.opensearch }}
+  labels:
+    {{- include "socialRegistry.labels" . | nindent 4 }}
+spec:
+  selector:
+    {{ toYaml .Values.opensearch.istio.gateway.ingressController | nindent 4 }}
+  servers:
+  {{- if .Values.opensearch.istio.gateway.httpEnabled }}
+  - port:
+      name: http2
+      number: 8080
+      protocol: HTTP2
+    hosts:
+      - {{ default .Values.global.opensearchHostname .Values.opensearch.istio.gateway.host | quote }}
+    {{- if .Values.opensearch.istio.gateway.httpTlsRedirect }}
+    tls:
+      httpsRedirect: true
+    {{- end }}
+  {{- end }}
+  {{- if .Values.opensearch.istio.gateway.httpsEnabled }}
+  - port:
+      name: https
+      number: 8443
+      protocol: HTTPS
+    hosts:
+      - {{ default .Values.global.opensearchHostname .Values.opensearch.istio.gateway.host | quote }}
+    tls:
+      {{ toYaml (omit .Values.opensearch.istio.gateway.tls "enabled") | nindent 6 }}
+  {{- end }}
+{{- end }}
+{{- end }}
+{{- end }}

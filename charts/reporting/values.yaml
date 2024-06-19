@@ -1,104 +1,390 @@
+global:
+  opensearchHostname: opensearch.openg2p.sandbox.net
+  reportingKafkaHostname: kafka.openg2p.sandbox.net
+
+  reportingInstallationName: '{{ .Release.Name }}-reporting'
+
+  reportingKafkaInstallationName: '{{ tpl .Values.global.reportingInstallationName $ }}-kafka'
+  reportingOpensearchInstallationName: '{{ tpl .Values.global.reportingInstallationName $ }}-opensearch'
+
+  keycloakBaseUrl: https://keycloak.openg2p.sandbox.net
+  keycloakIssuerUrl: '{{ tpl .Values.global.keycloakBaseUrl $ }}/realms/master'
+
+commonLabels: {}
+commonAnnotations: {}
+
 debezium:
   enabled: true
-  replicaCount: 1
-  image: debezium/connect:1.7.0.Final
-  imagePullPolicy: Always
-  port: 8083
-  fixer_container:
-    image: mosipid/debezium-fixer:1.2.0.1-B2
-    imagePullPolicy: Always
-    startup_delay: "30s"
-    probe_time_period: "30s"
-    error_level1: "failed"
-    error_level2: "PSQLException: An I/O error occurred while sending to the backend"
-  kafka:
-    server: "kafka:9092"
-    groupId: "1"
-    topics:
-      offset: debez-connect-offsets
-      config: debez-connect-configs
-      status: debez-connect-status
+  nameOverride: reporting-debezium
+  kafkaBootstrapServers: '{{ tpl .Values.global.reportingKafkaInstallationName $ }}:9092'
 
-kafkaClient:
+opensearch-kafka-connector:
   enabled: true
-  image: confluentinc/cp-kafka
-  db_secretref:
-    name: postgres-postgresql
-    key: postgresql-password
+  nameOverride: reporting-os-kafka-connector
+  kafkaBootstrapServers: '{{ tpl .Values.global.reportingKafkaInstallationName $ }}:9092'
 
-bitnami-kafka:
-  fullnameOverride: kafka
+kafka:
   enabled: true
-  replicaCount: 4
-  persistence:
-    enabled: false
-  zookeeper:
-    fullnameOverride: kafka-zookeeper
-    enabled: true
-    replicaCount: 4
-    persistence:
-      enabled: false
-
-confluentinc:
-  enabled: true
-
-  cp-zookeeper:
-    enabled: false
-  cp-kafka:
-    enabled: false
-  cp-kafka-rest:
-    enabled: false
-  cp-schema-registry:
-    enabled: false
-  cp-ksql-server:
-    enabled: false
-  cp-control-center:
-    enabled: false
-
-  os-kafka-connector:
-    enabled: true
+  nameOverride: reporting-kafka
+  heapOpts: ""
+  extraConfig: |-
+    log.retention.hours=2
+    default.replication.factor=1
+    offsets.topic.replication.factor=1
+    transaction.state.log.replication.factor=1
+    auto.create.topics.enable=true
+    delete.topic.enable=true
+    num.partitions=3
+  controller:
+    heapOpts: ""
     replicaCount: 1
-    image: openg2p/os-kafka-connector
-    imageTag: develop
-    imagePullPolicy: Always
-
-    kafka:
-      bootstrapServers: kafka:9092
-
-    prometheus:
-      jmx:
-        enabled: false
-
-    configurationOverrides:
-      config.storage.replication.factor: "1"
-      key.converter.schemas.enable: "false"
-      offset.storage.replication.factor: "1"
-      plugin.path: /opt/kafka/connectors
-      replication.factor: "1"
-      status.storage.replication.factor: "1"
-      value.converter.schemas.enable: "false"
-      zookeeper.connect: zookeeper:2181
-    customEnv: {}
-
-os-kafka-connector:
-  enabled: true
-  global:
-    kibanaEnabled: true
-  data:
-    fullnameOverride: os-kafka-connector-data
-    heapSize: 728m
+    resources: {}
+  broker:
+    heapOpts: ""
     persistence:
       enabled: false
+  listeners:
+    client:
+      protocol: PLAINTEXT
+    controller:
+      protocol: PLAINTEXT
+    interbroker:
+      protocol: PLAINTEXT
+    external:
+      protocol: PLAINTEXT
+  service:
+    ports:
+      client: 9092
+
+kafkaUi:
+  enabled: true
+  basePath: ""
+
+  kafkaBootstrapServers: '{{ tpl .Values.global.reportingKafkaInstallationName $ }}:9092'
+  debeziumAddress: '{{ .Values.debezium.enabled | ternary (include "common.names.fullname" .Subcharts.debezium) "" }}'
+  opensearchKafkaConnectorAddress: '{{ (index .Values "opensearch-kafka-connector" "enabled") | ternary (include "common.names.fullname" (index .Subcharts "opensearch-kafka-connector")) "" }}'
+
+  oidcIssuerUrl: '{{ tpl .Values.global.keycloakIssuerUrl $ }}'
+  oidcClientId: openg2p-reporting-kafka
+  oidcClientSecret: ''
+
+  replicaCount: 1
+
+  service:
+    type: ClusterIP
+    port: 80
+    nodePorts:
+      http: ""
+      https: ""
+    externalTrafficPolicy: Cluster
+
+  image:
+    registry: docker.io
+    repository: provectuslabs/kafka-ui
+    tag: v0.7.2
+    pullPolicy: Always
+    pullSecrets: []
+
+  containerPort: 8080
+
+  startupProbe:
+    enabled: true
+    httpGet:
+      path: '{{ tpl .Values.kafkaUi.basePath $ }}/actuator/health'
+      port: 8080
+    initialDelaySeconds: 0
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 30
+    successThreshold: 1
+
+  livenessProbe:
+    enabled: true
+    httpGet:
+      path: '{{ tpl .Values.kafkaUi.basePath $ }}/actuator/health'
+      port: 8080
+    initialDelaySeconds: 20
+    periodSeconds: 30
+    timeoutSeconds: 5
+    failureThreshold: 6
+    successThreshold: 1
+
+  readinessProbe:
+    enabled: true
+    httpGet:
+      path: '{{ tpl .Values.kafkaUi.basePath $ }}/actuator/health'
+      port: 8080
+    initialDelaySeconds: 0
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 6
+    successThreshold: 1
+
+  command: []
+  args: []
+
+  hostAliases: []
+
+  resources: {}
+  # javaOpts: "-Xms256M -Xmx2G"
+  javaOpts: "-Xmx2G"
+
+  containerSecurityContext:
+    enabled: false
+    runAsUser: 1001
+    runAsNonRoot: true
+
+  podSecurityContext:
+    enabled: false
+    fsGroup: 1001
+
+  podAffinityPreset: ""
+  podAntiAffinityPreset: soft
+  nodeAffinityPreset:
+    type: ""
+    key: ""
+    values: []
+  affinity: {}
+  nodeSelector: {}
+  tolerations: []
+
+  podLabels: {}
+  podAnnotations: {}
+
+  priorityClassName: ""
+  lifecycleHooks: {}
+
+  updateStrategy:
+    type: RollingUpdate
+
+  initContainers: []
+  sidecars: []
+
+  extraVolumes: []
+  extraVolumeMounts: []
+
+  envVars:
+    JDK_JAVA_OPTIONS: '{{ tpl .Values.kafkaUi.javaOpts $ }}'
+    SERVER_SERVLET_CONTEXT_PATH: '{{ tpl .Values.kafkaUi.basePath $ }}'
+    SPRING_CONFIG_ADDITIONAL-LOCATION: '/kafka-ui/config.yml'
+  envVarsFrom: {}
+
+  configYml: |-
+    server:
+      max-http-header-size: "200000"
+    kafka:
+      clusters:
+      - name: main
+        bootstrapServers: '{{ tpl .Values.kafkaUi.kafkaBootstrapServers $ }}'
+        kafkaConnect:
+        - name: debezium
+          address: 'http://{{ tpl .Values.kafkaUi.debeziumAddress $ }}'
+        - name: opensearch-kafka-connector
+          address: 'http://{{ tpl .Values.kafkaUi.opensearchKafkaConnectorAddress $ }}'
+    auth:
+      type: OAUTH2
+      oauth2:
+        client:
+          keycloak:
+            clientId: '{{ tpl .Values.kafkaUi.oidcClientId $ }}'
+            clientSecret: '{{ tpl .Values.kafkaUi.oidcClientSecret $ }}'
+            scope: ["openid","profile","email"]
+            authorization-grant-type: authorization_code
+            issuer-uri: '{{ tpl .Values.kafkaUi.oidcIssuerUrl $ }}'
+            jwk-set-uri: '{{ tpl .Values.kafkaUi.oidcIssuerUrl $ }}/protocol/openid-connect/certs'
+            user-name-attribute: email
+            client-name: Keycloak
+            provider: keycloak
+            custom-params:
+              type: oauth
+              roles-field: client_roles
+    rbac:
+      roles:
+        - name: "admins"
+          clusters: ["main"]
+          subjects:
+            # FILL THIS
+          permissions:
+            - resource: applicationconfig
+              actions: all
+            - resource: clusterconfig
+              actions: all
+            - resource: topic
+              value: ".*"
+              actions: all
+            - resource: consumer
+              value: ".*"
+              actions: all
+            - resource: schema
+              value: ".*"
+              actions: all
+            - resource: connect
+              value: ".*"
+              actions: all
+            - resource: ksql
+              actions: all
+            - resource: acl
+              actions: all
+  istio:
+    enabled: true
+    virtualservice:
+      enabled: true
+      host: ""
+      gateway: "internal"
+      destination: '{{ include "common.names.fullname" .Subcharts.kafka }}-ui'
+      destinationPort: '{{ .Values.kafkaUi.service.port }}'
+      prefix: /
+      rewriteUri: ""
+    gateway:
+      enabled: false
+      host: ""
+      ingressController:
+        istio: ingressgateway
+      httpTlsRedirect: true
+      httpEnabled: true
+      httpsEnabled: false
+      tls:
+        mode: SIMPLE
+        credentialName: ""
+
+opensearch:
+  enabled: true
+  nameOverride: reporting-opensearch
+
+  oidcWellKnownConfigUrl: '{{ tpl .Values.global.keycloakIssuerUrl $ }}/.well-known/openid-configuration'
+  oidcClientId: openg2p-reporting-opensearch
+  oidcClientSecret: ''
 
   master:
-    fullnameOverride: os-kafka-connector-master
-    heapSize: 1024m
+    replicaCount: 1
     persistence:
-      enabled: false
+      size: 8Gi
+    heapSize: 256m
+    masterOnly: false
+
+  data:
+    replicaCount: 0
+    # persistence:
+    #   size: 8Gi
 
   coordinating:
-    fullnameOverride: opensearch-coordinating-only
-  kibana:
-    fullnameOverride: kibana
-    persistence:
-      enabled: false
+    replicaCount: 0
+
+  ingest:
+    replicaCount: 0
+
+  extraVolumes:
+  - name: security-config
+    configMap:
+      name: '{{ include "common.names.fullname" .Subcharts.opensearch }}-custom-config'
+
+  extraVolumeMounts:
+  - name: security-config
+    mountPath: /opt/bitnami/opensearch/config.default/opensearch-security/config.yml
+    subPath: opensearch-security-config.yml
+
+  security:
+    enabled: true
+    tls:
+      restEncryption: true
+    extraConfig: |-
+      _meta:
+        type: "config"
+        config_version: 2
+
+      config:
+        dynamic:
+          http:
+            anonymous_auth_enabled: false
+            xff:
+              enabled: false
+          authc:
+            basic_internal_auth_domain:
+              http_enabled: true
+              transport_enabled: true
+              order: 0
+              description: "Authenticate via HTTP Basic against internal users database"
+              http_authenticator:
+                type: basic
+                challenge: false
+              authentication_backend:
+                type: internal
+            openid_auth_domain:
+              http_enabled: true
+              transport_enabled: true
+              order: 1
+              description: "Authenticate via Keycloak OIDC"
+              http_authenticator:
+                type: openid
+                challenge: false
+                config:
+                  subject_key: preferred_username
+                  roles_key: groups
+                  openid_connect_url: '{{ tpl .Values.opensearch.oidcWellKnownConfigUrl $ }}'
+              authentication_backend:
+                type: noop
+            kerberos_auth_domain:
+              http_enabled: false
+              transport_enabled: false
+            proxy_auth_domain:
+              http_enabled: false
+              transport_enabled: false
+            jwt_auth_domain:
+              http_enabled: false
+              transport_enabled: false
+            clientcert_auth_domain:
+              http_enabled: false
+              transport_enabled: false
+            ldap:
+              http_enabled: false
+              transport_enabled: false
+          authz: {}
+
+  dashboards:
+    enabled: true
+    replicaCount: 1
+
+    extraVolumes:
+    - name: dashboards-config
+      configMap:
+        name: '{{ include "common.names.fullname" .Subcharts.opensearch }}-custom-config'
+
+    extraVolumeMounts:
+    - name: dashboards-config
+      mountPath: /opt/bitnami/opensearch-dashboards/config.default/opensearch_dashboards.yml
+      subPath: opensearch_dashboards.yml
+
+    extraConfig: |-
+      path:
+        data: /bitnami/opensearch-dashboards/data
+      opensearch:
+        requestHeadersAllowlist:
+          - authorization
+          - securitytenant
+        ssl:
+          verificationMode: none
+      opensearch_security:
+        auth:
+          type:
+          # - basicauth # Enable this to allow password based auth also
+          - openid
+          multiple_auth_enabled: true
+        openid:
+          connect_url: '{{ tpl .Values.opensearch.oidcWellKnownConfigUrl $ }}'
+          client_id: '{{ tpl .Values.opensearch.oidcClientId $ }}'
+          client_secret: '{{ tpl .Values.opensearch.oidcClientSecret $ }}'
+          base_redirect_url: 'https://{{ tpl .Values.global.opensearchHostname $ }}'
+          logout_url: ""
+        ui:
+          openid:
+            login:
+              buttonname: "Log in with Keycloak"
+        multitenancy:
+          enabled: false # Enable this if multi tenancy is needed.
+          tenants:
+            preferred:
+            - Global
+            - Private
+        readonly_mode:
+          roles:
+          - kibana_read_only

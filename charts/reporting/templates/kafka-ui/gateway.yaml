@@ -1,0 +1,45 @@
+{{- if .Values.kafka.enabled  }}
+{{- if .Values.kafkaUi.enabled  }}
+{{- if .Values.kafkaUi.istio.enabled  }}
+{{- if .Values.kafkaUi.istio.gateway.enabled  }}
+apiVersion: networking.istio.io/v1beta1
+kind: Gateway
+metadata:
+  name: {{ include "common.names.fullname" .Subcharts.kafka }}-ui
+  labels: {{- include "common.labels.standard" . | nindent 4 }}
+    {{- if .Values.commonLabels }}
+    {{- include "common.tplvalues.render" ( dict "value" .Values.commonLabels "context" $ ) | nindent 4 }}
+    {{- end }}
+  {{- if .Values.commonAnnotations }}
+  annotations: {{- include "common.tplvalues.render" ( dict "value" .Values.commonAnnotations "context" $ ) | nindent 4 }}
+  {{- end }}
+spec:
+  selector:
+    {{ toYaml .Values.kafkaUi.istio.gateway.ingressController | nindent 4 }}
+  servers:
+  {{- if .Values.kafkaUi.istio.gateway.httpEnabled }}
+  - port:
+      name: http2
+      number: 8080
+      protocol: HTTP2
+    hosts:
+      - {{ default .Values.global.reportingKafkaHostname .Values.kafkaUi.istio.gateway.host | quote }}
+    {{- if .Values.kafkaUi.istio.gateway.httpTlsRedirect }}
+    tls:
+      httpsRedirect: true
+    {{- end }}
+  {{- end }}
+  {{- if .Values.kafkaUi.istio.gateway.httpsEnabled }}
+  - port:
+      name: https
+      number: 8443
+      protocol: HTTPS
+    hosts:
+      - {{ default .Values.global.reportingKafkaHostname .Values.kafkaUi.istio.gateway.host | quote }}
+    tls:
+      {{ toYaml (omit .Values.kafkaUi.istio.gateway.tls "enabled") | nindent 6 }}
+  {{- end }}
+{{- end }}
+{{- end }}
+{{- end }}
+{{- end }}

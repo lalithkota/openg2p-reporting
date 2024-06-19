@@ -25,12 +25,16 @@ import org.apache.kafka.connect.data.Struct;
 // import org.elasticsearch.index.query.QueryBuilders;
 // import org.elasticsearch.index.query.BoolQueryBuilder;
 
+import org.apache.hc.client5.http.auth.AuthScope;
+import org.apache.hc.client5.http.auth.CredentialsStore;
+import org.apache.hc.client5.http.classic.methods.HttpGet;
+import org.apache.hc.client5.http.auth.UsernamePasswordCredentials;
+import org.apache.hc.client5.http.impl.auth.BasicCredentialsProvider;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpResponse;
-import org.apache.hc.client5.http.classic.methods.HttpGet;
+import org.apache.hc.client5.http.impl.classic.HttpClientBuilder;
 import org.apache.hc.client5.http.impl.classic.HttpClients;
 import org.apache.hc.core5.http.HttpEntity;
-import org.apache.hc.core5.http.Header;
 import org.apache.hc.core5.http.io.entity.EntityUtils;
 import org.apache.hc.core5.http.io.entity.StringEntity;
 
@@ -41,9 +45,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Map;
-import java.io.IOException;
 
 public abstract class DynamicNewField<R extends ConnectRecord<R>> implements Transformation<R> {
 
@@ -80,7 +82,20 @@ public abstract class DynamicNewField<R extends ConnectRecord<R>> implements Tra
         CloseableHttpClient hClient;
         HttpGet hGet;
 
-        ESQueryConfig(String type, String esUrl, String esIndex, String[] esInputFields, String esOutputField, String[] inputFields, String[] inputDefaultValues,String outputField, String esInputQueryAddKeyword) {
+        ESQueryConfig(
+            String type,
+            String[] inputFields,
+            String outputField,
+            String[] inputDefaultValues,
+            String esUrl,
+            String esIndex,
+            String[] esInputFields,
+            String esOutputField,
+            String esInputQueryAddKeyword,
+            boolean esSecurity,
+            String esUsername,
+            String esPassword
+        ) {
             super(type,inputFields,inputDefaultValues,outputField,Schema.OPTIONAL_STRING_SCHEMA);
 
             this.esUrl=esUrl;
@@ -90,7 +105,13 @@ public abstract class DynamicNewField<R extends ConnectRecord<R>> implements Tra
             this.esInputQueryAddKeyword=esInputQueryAddKeyword;
 
             // esClient = new RestHighLevelClient(RestClient.builder(HttpHost.create(this.esUrl)));
-            hClient = HttpClients.createDefault();
+            HttpClientBuilder hClientBuilder = HttpClients.custom();
+            if(esSecurity) { 
+                CredentialsStore esCredStore = new BasicCredentialsProvider();
+                esCredStore.setCredentials(new AuthScope(null, -1), new UsernamePasswordCredentials(esUsername, esPassword.toCharArray()));
+                hClientBuilder.setDefaultCredentialsProvider(esCredStore);
+            }
+            hClient = hClientBuilder.build();
             hGet = new HttpGet(this.esUrl+"/"+this.esIndex+"/_search");
             hGet.setHeader("Content-type", "application/json");
         }
@@ -255,28 +276,40 @@ public abstract class DynamicNewField<R extends ConnectRecord<R>> implements Tra
 
     public static final String PURPOSE = "dynamic field insertion";
     public static final String TYPE_CONFIG = "query.type";
+
+    // Base Config
+    public static final String INPUT_FIELDS_CONFIG = "input.fields";
+    public static final String OUTPUT_FIELD_CONFIG = "output.field";
+    public static final String DEFAULT_VALUE_CONFIG = "input.default.values";
+
+    // Elasticsearch Specific Config
     public static final String ES_URL_CONFIG = "es.url";
     public static final String ES_INDEX_CONFIG = "es.index";
     public static final String ES_INPUT_FIELDS_CONFIG = "es.input.fields";
     public static final String ES_OUTPUT_FIELD_CONFIG = "es.output.field";
-    public static final String INPUT_FIELDS_CONFIG = "input.fields";
-    public static final String OUTPUT_FIELD_CONFIG = "output.field";
-    public static final String DEFAULT_VALUE_CONFIG = "input.default.values";
     public static final String ES_INPUT_QUERY_ADD_KEYWORD = "es.input.query.add.keyword";
+    public static final String ES_SECURITY_ENABLED_CONFIG = "es.security.enabled";
+    public static final String ES_USERNAME_CONFIG = "es.username";
+    public static final String ES_PASSWORD_CONFIG = "es.password";
 
     private Config config;
     private Cache<Schema, Schema> schemaUpdateCache;
 
     public static ConfigDef CONFIG_DEF = new ConfigDef()
         .define(TYPE_CONFIG, ConfigDef.Type.STRING, "es", ConfigDef.Importance.HIGH, "This is the type of query made. For now this field is ignored and defaulted to es")
+        .define(INPUT_FIELDS_CONFIG, ConfigDef.Type.STRING, "", ConfigDef.Importance.HIGH, "Name of the field in the current index")
+        .define(OUTPUT_FIELD_CONFIG, ConfigDef.Type.STRING, "", ConfigDef.Importance.HIGH, "Name to give to the new field")
+        .define(DEFAULT_VALUE_CONFIG, ConfigDef.Type.STRING, "", ConfigDef.Importance.HIGH, "Default vlaues for input fields")
+    
         .define(ES_URL_CONFIG, ConfigDef.Type.STRING, "", ConfigDef.Importance.HIGH, "Installed Elasticsearch URL")
         .define(ES_INDEX_CONFIG, ConfigDef.Type.STRING, "", ConfigDef.Importance.HIGH, "Name of the index in ES to search")
         .define(ES_INPUT_FIELDS_CONFIG, ConfigDef.Type.STRING, "", ConfigDef.Importance.HIGH, "ES documents with given input field will be searched for. This field tells the key name")
         .define(ES_OUTPUT_FIELD_CONFIG, ConfigDef.Type.STRING, "", ConfigDef.Importance.HIGH, "If a successful match is made with the above input field+value, the value of this output field from the same document will be returned")
-        .define(INPUT_FIELDS_CONFIG, ConfigDef.Type.STRING, "", ConfigDef.Importance.HIGH, "Name of the field in the current index")
-        .define(OUTPUT_FIELD_CONFIG, ConfigDef.Type.STRING, "", ConfigDef.Importance.HIGH, "Name to give to the new field")
-        .define(DEFAULT_VALUE_CONFIG, ConfigDef.Type.STRING, "", ConfigDef.Importance.HIGH, "Default vlaues for input fields")
-        .define(ES_INPUT_QUERY_ADD_KEYWORD, ConfigDef.Type.STRING, "true", ConfigDef.Importance.HIGH, "Should add the .keyword suffix while querying ES?");
+        .define(ES_INPUT_QUERY_ADD_KEYWORD, ConfigDef.Type.STRING, "true", ConfigDef.Importance.HIGH, "Should add the .keyword suffix while querying ES?")
+    
+        .define(ES_SECURITY_ENABLED_CONFIG, ConfigDef.Type.BOOLEAN, false, ConfigDef.Importance.HIGH, "Is Elasticsearch security enabled?")
+        .define(ES_USERNAME_CONFIG, ConfigDef.Type.STRING, "", ConfigDef.Importance.HIGH, "Elasticsearch Username")
+        .define(ES_PASSWORD_CONFIG, ConfigDef.Type.STRING, "", ConfigDef.Importance.HIGH, "Elasticsearch Password");
 
 
     @Override
@@ -284,33 +317,55 @@ public abstract class DynamicNewField<R extends ConnectRecord<R>> implements Tra
         AbstractConfig absconf = new AbstractConfig(CONFIG_DEF, configs, false);
 
         schemaUpdateCache = new SynchronizedCache<>(new LRUCache<Schema,Schema>(16));
+        
+        String type = absconf.getString(TYPE_CONFIG);
+        
+        String inputFieldBulk = absconf.getString(INPUT_FIELDS_CONFIG);
+        String outputField = absconf.getString(OUTPUT_FIELD_CONFIG);
+        String inputDefaultValuesBulk = absconf.getString(DEFAULT_VALUE_CONFIG);
 
-        String type = "es";
+        if (type.isEmpty() || inputFieldBulk.isEmpty() || outputField.isEmpty() || inputDefaultValuesBulk.isEmpty()) {
+            throw new ConfigException("One of required transform base config fields not set. Required base fields in tranform: " + TYPE_CONFIG + " ," + INPUT_FIELDS_CONFIG + " ," + OUTPUT_FIELD_CONFIG + " ," + DEFAULT_VALUE_CONFIG);
+        }
+
+        String[] inputFields = inputFieldBulk.replaceAll("\\s+","").split(",");
+        String[] inputDefaultValues = inputDefaultValuesBulk.replaceAll("\\s+","").split(",");
 
         if(type.equals("es")){
             String esUrl = absconf.getString(ES_URL_CONFIG);
             String esIndex = absconf.getString(ES_INDEX_CONFIG);
+            boolean esSecurity = absconf.getBoolean(ES_SECURITY_ENABLED_CONFIG);
+            String esUsername = absconf.getString(ES_USERNAME_CONFIG);
+            String esPassword = absconf.getString(ES_PASSWORD_CONFIG);
             String esInputFieldBulk = absconf.getString(ES_INPUT_FIELDS_CONFIG);
             String esOutputField = absconf.getString(ES_OUTPUT_FIELD_CONFIG);
-            String inputFieldBulk = absconf.getString(INPUT_FIELDS_CONFIG);
-            String outputField = absconf.getString(OUTPUT_FIELD_CONFIG);
-            String inputDefaultValuesBulk = absconf.getString(DEFAULT_VALUE_CONFIG);
             String esInputQueryAddKeyword = absconf.getString(ES_INPUT_QUERY_ADD_KEYWORD);
 
-            if(type.isEmpty() || esUrl.isEmpty() || esIndex.isEmpty() || esInputFieldBulk.isEmpty() || esOutputField.isEmpty() || inputFieldBulk.isEmpty() || outputField.isEmpty() || inputDefaultValuesBulk.isEmpty()){
-                throw new ConfigException("One of required transform config fields not set. Required field in tranforms: " + ES_URL_CONFIG + " ," + ES_INDEX_CONFIG + " ," + ES_INPUT_FIELDS_CONFIG + " ," + ES_OUTPUT_FIELD_CONFIG + " ," + INPUT_FIELDS_CONFIG + " ," + OUTPUT_FIELD_CONFIG + " ," + DEFAULT_VALUE_CONFIG);
+            if(esUrl.isEmpty() || esIndex.isEmpty() || esInputFieldBulk.isEmpty() || esOutputField.isEmpty()){
+                throw new ConfigException("One of required transform Elasticsearch config fields not set. Required Elasticsearch fields in tranform: " + ES_URL_CONFIG + " ," + ES_INDEX_CONFIG + " ," + ES_INPUT_FIELDS_CONFIG + " ," + ES_OUTPUT_FIELD_CONFIG);
             }
 
-            String[] inputFields = inputFieldBulk.replaceAll("\\s+","").split(",");
             String[] esInputFields = esInputFieldBulk.replaceAll("\\s+","").split(",");
-            String[] inputDefaultValues = inputDefaultValuesBulk.replaceAll("\\s+","").split(",");
 
             if(inputFields.length != esInputFields.length || inputFields.length != inputDefaultValues.length){
                 throw new ConfigException("No of " + INPUT_FIELDS_CONFIG + " and no of " + ES_INPUT_FIELDS_CONFIG + "and number of " + DEFAULT_VALUE_CONFIG + " doesnt match. Given " + INPUT_FIELDS_CONFIG + ": " + inputFieldBulk + ". Given " + ES_INPUT_FIELDS_CONFIG + ": " + esInputFieldBulk + ". Given " + DEFAULT_VALUE_CONFIG + ": " + inputDefaultValuesBulk);
             }
 
             try{
-                config = new ESQueryConfig(type,esUrl,esIndex,esInputFields,esOutputField,inputFields,inputDefaultValues,outputField,esInputQueryAddKeyword);
+                config = new ESQueryConfig(
+                    type,
+                    inputFields,
+                    outputField,
+                    inputDefaultValues,
+                    esUrl,
+                    esIndex,
+                    esInputFields,
+                    esOutputField,
+                    esInputQueryAddKeyword,
+                    esSecurity,
+                    esUsername,
+                    esPassword
+                );
             }
             catch(Exception e){
                 throw new ConfigException("Can't connect to ElasticSearch. Given url : " + esUrl + " Error: " + e.getMessage());
