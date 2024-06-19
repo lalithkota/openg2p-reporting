@@ -2,18 +2,19 @@
 
 Helm chart for installing reporting module
 
-## TL;DR
+## Manual Installation
+
+Reporting framework can be installed directly as part of OpenG2P modules, like Social Registry and PBMS, etc.
 
 ```console
 $ helm repo add openg2p https://openg2p.github.io/openg2p-helm
-$ helm install my-release openg2p/reporting
+$ helm install reporting openg2p/reporting
 ```
 
 ## Contents
 
 This helm chart contains the following subcharts and they can be individually configured/installed/omitted, through the `values.yaml`.
-- Bitnami's Kafka
+- Kafka + Kafka UI
+- OpenSearch
 - Debezium Kafka Connector
 - Opensearch Kafka Connector
-- A KafkaClient Pod for monitoring kafka topics, and making connect api calls
-

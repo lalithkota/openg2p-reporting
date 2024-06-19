@@ -92,7 +92,7 @@ public abstract class DynamicNewField<R extends ConnectRecord<R>> implements Tra
             String[] esInputFields,
             String esOutputField,
             String esInputQueryAddKeyword,
-            boolean esSecurity,
+            String esSecurity,
             String esUsername,
             String esPassword
         ) {
@@ -106,7 +106,7 @@ public abstract class DynamicNewField<R extends ConnectRecord<R>> implements Tra
 
             // esClient = new RestHighLevelClient(RestClient.builder(HttpHost.create(this.esUrl)));
             HttpClientBuilder hClientBuilder = HttpClients.custom();
-            if(esSecurity) { 
+            if(esSecurity!=null && !esSecurity.isEmpty() && "true".equals(esSecurity)) { 
                 CredentialsStore esCredStore = new BasicCredentialsProvider();
                 esCredStore.setCredentials(new AuthScope(null, -1), new UsernamePasswordCredentials(esUsername, esPassword.toCharArray()));
                 hClientBuilder.setDefaultCredentialsProvider(esCredStore);
@@ -307,7 +307,7 @@ public abstract class DynamicNewField<R extends ConnectRecord<R>> implements Tra
         .define(ES_OUTPUT_FIELD_CONFIG, ConfigDef.Type.STRING, "", ConfigDef.Importance.HIGH, "If a successful match is made with the above input field+value, the value of this output field from the same document will be returned")
         .define(ES_INPUT_QUERY_ADD_KEYWORD, ConfigDef.Type.STRING, "true", ConfigDef.Importance.HIGH, "Should add the .keyword suffix while querying ES?")
     
-        .define(ES_SECURITY_ENABLED_CONFIG, ConfigDef.Type.BOOLEAN, false, ConfigDef.Importance.HIGH, "Is Elasticsearch security enabled?")
+        .define(ES_SECURITY_ENABLED_CONFIG, ConfigDef.Type.STRING, "", ConfigDef.Importance.HIGH, "Is Elasticsearch security enabled?")
         .define(ES_USERNAME_CONFIG, ConfigDef.Type.STRING, "", ConfigDef.Importance.HIGH, "Elasticsearch Username")
         .define(ES_PASSWORD_CONFIG, ConfigDef.Type.STRING, "", ConfigDef.Importance.HIGH, "Elasticsearch Password");
 
@@ -334,7 +334,7 @@ public abstract class DynamicNewField<R extends ConnectRecord<R>> implements Tra
         if(type.equals("es")){
             String esUrl = absconf.getString(ES_URL_CONFIG);
             String esIndex = absconf.getString(ES_INDEX_CONFIG);
-            boolean esSecurity = absconf.getBoolean(ES_SECURITY_ENABLED_CONFIG);
+            String esSecurity = absconf.getString(ES_SECURITY_ENABLED_CONFIG);
             String esUsername = absconf.getString(ES_USERNAME_CONFIG);
             String esPassword = absconf.getString(ES_PASSWORD_CONFIG);
             String esInputFieldBulk = absconf.getString(ES_INPUT_FIELDS_CONFIG);

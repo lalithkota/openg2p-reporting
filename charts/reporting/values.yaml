@@ -5,7 +5,6 @@ global:
   reportingInstallationName: '{{ .Release.Name }}-reporting'
 
   reportingKafkaInstallationName: '{{ tpl .Values.global.reportingInstallationName $ }}-kafka'
-  reportingOpensearchInstallationName: '{{ tpl .Values.global.reportingInstallationName $ }}-opensearch'
 
   keycloakBaseUrl: https://keycloak.openg2p.sandbox.net
   keycloakIssuerUrl: '{{ tpl .Values.global.keycloakBaseUrl $ }}/realms/master'
