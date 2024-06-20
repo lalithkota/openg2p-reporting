@@ -24,8 +24,7 @@
         "transforms.keyExtId.field": "id",
 
         "transforms.debezExtract.type": "io.debezium.transforms.ExtractNewRecordState",
-        "transforms.debezExtract.delete.handling.mode": "drop",
-        "transforms.debezExtract.drop.tombstones": "false",
+        "transforms.debezExtract.delete.tombstone.handling.mode": "tombstone",
         "transforms.debezExtract.add.fields": "source.ts_ms:ts_ms,table,lsn",
         "transforms.debezExtract.add.fields.prefix": "source_",
 

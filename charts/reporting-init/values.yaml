@@ -151,7 +151,7 @@ envVars:
   DB_PORT: 5432
   DB_USER: postgres
   DB_NAME: '' # To be filled
-  DB_PREFIX_INDEX: '{{ .Release.Name | replace "-" "_" }}_{{ .Release.Namespace | replace "-" "_" }}' # To be modified according to app
+  DB_PREFIX_INDEX: '{{ .Release.Namespace | replace "-" "_" }}_{{ .Release.Name | replace "-" "_" }}' # To be modified according to app
   DEFAULT_DEBEZIUM_CONNECTOR_HEARTBEAT_MS: 5000
 
   OPENSEARCH_URL: 'https://{{ tpl .Values.global.reportingOpensearchInstallationName $ }}:9200'
@@ -176,6 +176,12 @@ startUpCommand: |-
 
   set -o pipefail
   set -e
+
+  until pg_isready -h ${DB_HOSTNAME} -p ${DB_PORT}; do sleep 3; done && echo "Connection with PostgreSQL successful."
+  curl -k -I -s -o /dev/null -m 10 --retry 100 --retry-delay 10 --retry-all-errors "${OPENSEARCH_URL}" && echo "Connection with OpenSearch successful."
+  curl -k -I -s -o /dev/null -m 10 --retry 100 --retry-delay 10 --retry-all-errors "${DEBEZIUM_URL}" && echo "Connection with Debezium successful"
+  curl -k -I -s -o /dev/null -m 10 --retry 100 --retry-delay 10 --retry-all-errors "${OS_KAFKA_CONNECTOR_URL}" && echo "Connection with OpenSearch Kafka Connector successful"
+  # TODO: wait for kafka (?)
 
   if [ "$GIT_CONFIG_ENABLED" = "true" ]; then
     cd /tmp
