@@ -339,11 +339,11 @@ envVarsFrom: {}
 
 propertiesOverride:
   bootstrap.servers: '{{ tpl .Values.kafkaBootstrapServers $ }}'
-  group.id: 1
+  group.id: 2
 
-  host.name: '0.0.0.0'
-  rest.port: '{{ .Values.containerPort }}'
-  #listeners: HTTP://:8083
+  # host.name: '0.0.0.0'
+  # rest.port: '{{ .Values.containerPort }}'
+  listeners: 'HTTP://:{{ .Values.containerPort }}'
 
   # TODO: Evaluate the ADVERTISED options
   rest.advertised.host.name: '{{ include "common.names.fullname" . }}'

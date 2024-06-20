@@ -2,7 +2,9 @@
     "name": "res_partner_${DB_PREFIX_INDEX}",
     "config": {
         "connector.class": "io.aiven.kafka.connect.opensearch.OpensearchSinkConnector",
-        "connection.url": "$OPENSEARCH_URL",
+        "connection.url": "${OPENSEARCH_URL}",
+        "connection.username": "${OPENSEARCH_USERNAME}",
+        "connection.password": "${OPENSEARCH_PASSWORD}",
         "tasks.max": "1",
         "topics": "${DB_PREFIX_INDEX}.public.res_partner",
         "key.ignore": "false",
