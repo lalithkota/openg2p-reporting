@@ -207,7 +207,7 @@ kafkaUi:
           subjects:
             - provider: oauth
               type: role
-              value: "Admin"
+              value: "admin"
           permissions:
             - resource: applicationconfig
               actions: all

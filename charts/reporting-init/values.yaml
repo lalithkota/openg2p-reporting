@@ -157,7 +157,7 @@ envVars:
   OPENSEARCH_URL: 'https://{{ tpl .Values.global.reportingOpensearchInstallationName $ }}:9200'
 
   OPENSEARCH_SECURITY_ENABLED: true
-  OPENSEARCH_USERNAME: logstash
+  OPENSEARCH_USERNAME: admin
 
   dollar: '$'
 
@@ -169,7 +169,7 @@ envVarsFrom:
   OPENSEARCH_PASSWORD:
     secretKeyRef:
       name: '{{ tpl .Values.global.reportingOpensearchInstallationName $ }}'
-      key: logstash-password
+      key: opensearch-password
 
 startUpCommand: |-
   #!/usr/bin/env bash
