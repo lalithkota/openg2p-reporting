@@ -58,6 +58,8 @@ kafka:
 
 kafkaUi:
   enabled: true
+  # kafka.nameOverride will apply here too.
+
   basePath: ""
 
   kafkaBootstrapServers: '{{ tpl .Values.global.reportingKafkaInstallationName $ }}:9092'
@@ -203,7 +205,9 @@ kafkaUi:
         - name: "admins"
           clusters: ["main"]
           subjects:
-            # FILL THIS
+            - provider: oauth
+              type: role
+              value: "Admin"
           permissions:
             - resource: applicationconfig
               actions: all

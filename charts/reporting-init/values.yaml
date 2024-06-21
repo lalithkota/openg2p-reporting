@@ -69,7 +69,7 @@ podLabels: {}
 ## ref: https://kubernetes.io/docs/concepts/overview/working-with-objects/annotations/
 ##
 podAnnotations:
-  sidecar.istio.io/inject: False
+  sidecar.istio.io/inject: "false"
 
 ## Add init containers to the  pods.
 ## Example:
@@ -142,7 +142,7 @@ gitConfig:
         key: subDir
 
 envVars:
-  GIT_CONFIG_ENABLED: '{{ .Values.gitConfig.enabled | quote }}'
+  GIT_CONFIG_ENABLED: '{{ .Values.gitConfig.enabled }}'
 
   DEBEZIUM_URL: '{{ tpl .Values.global.reportingDebeziumInstallationName $ }}'
   OS_KAFKA_CONNECTOR_URL: '{{ tpl .Values.global.reportingOsKafkaConnectorInstallationName $ }}'
@@ -151,13 +151,13 @@ envVars:
   DB_PORT: 5432
   DB_USER: postgres
   DB_NAME: '' # To be filled
-  DB_PREFIX_INDEX: '{{ .Release.Namespace }}'
+  DB_PREFIX_INDEX: '{{ .Release.Namespace | replace "-" "_" }}_{{ .Release.Name | replace "-" "_" }}' # To be modified according to app
   DEFAULT_DEBEZIUM_CONNECTOR_HEARTBEAT_MS: 5000
 
   OPENSEARCH_URL: 'https://{{ tpl .Values.global.reportingOpensearchInstallationName $ }}:9200'
 
   OPENSEARCH_SECURITY_ENABLED: true
-  OPENSEARCH_USERNAME: 'logstash'
+  OPENSEARCH_USERNAME: admin
 
   dollar: '$'
 
@@ -165,19 +165,29 @@ envVarsFrom:
   DB_PASS:
     secretKeyRef:
       name: '{{ tpl .Values.global.reportingPostgresqlInstallationName $ }}'
-      key: postgres-passsword
+      key: postgres-password
   OPENSEARCH_PASSWORD:
     secretKeyRef:
       name: '{{ tpl .Values.global.reportingOpensearchInstallationName $ }}'
-      key: 'logstash-password'
+      key: opensearch-password
 
 startUpCommand: |-
   #!/usr/bin/env bash
+
+  set -o pipefail
+  set -e
+
+  until pg_isready -h ${DB_HOSTNAME} -p ${DB_PORT}; do sleep 3; done && echo "Connection with PostgreSQL successful."
+  curl -k -I -s -o /dev/null -m 10 --retry 100 --retry-delay 10 --retry-all-errors "${OPENSEARCH_URL}" && echo "Connection with OpenSearch successful."
+  curl -k -I -s -o /dev/null -m 10 --retry 100 --retry-delay 10 --retry-all-errors "${DEBEZIUM_URL}" && echo "Connection with Debezium successful"
+  curl -k -I -s -o /dev/null -m 10 --retry 100 --retry-delay 10 --retry-all-errors "${OS_KAFKA_CONNECTOR_URL}" && echo "Connection with OpenSearch Kafka Connector successful"
+  # TODO: wait for kafka (?)
+
   if [ "$GIT_CONFIG_ENABLED" = "true" ]; then
     cd /tmp
-    git clone -d "$GIT_CONFIG_BRANCH" --depth 1 "$GIT_CONFIG_REPO_URL" config
+    git clone -b "$GIT_CONFIG_BRANCH" --depth 1 "$GIT_CONFIG_REPO_URL" config
     config_dir=config/${GIT_CONFIG_SUB_DIR}
-    sudo mv $config_dir /reporting-init/config
+    mv $config_dir /reporting-init/config
   fi
 
   cd /reporting-init/config
@@ -188,8 +198,9 @@ startUpCommand: |-
     for conn in $arr ; do if [ "$conn" = "$value_to_check" ]; then echo "yes"; fi ; done
   }
 
-  echo "==> DEBEZIUM CONNECTORS"
+  echo "====> DEBEZIUM CONNECTORS"
   if [ -d debezium-connectors ]; then
+    echo "==> Starting Debezium Connector Initialization"
     debezium_existing_connectors_list=$(curl -s $DEBEZIUM_URL/connectors | jq -cr '.[]')
     debezium_new_connectors_list=()
     for debezium_conn in debezium-connectors/* ; do
@@ -199,22 +210,27 @@ startUpCommand: |-
 
       if_exists=$(contains $debezium_existing_connectors_list $debezium_connector_name)
       if [ -z "$if_exists" ]; then
-        curl -s -XPOST -H 'Content-Type: application/json' $DEBEZIUM_URL/connectors -d "$debezium_connector_config"
+        echo "==> Creating new Connector - $debezium_connector_name."
+        curl -s -XPOST -H 'Content-Type: application/json' $DEBEZIUM_URL/connectors -d "$debezium_connector_config" | jq
       else
-        curl -s -XPUT -H 'Content-Type: application/json' $DEBEZIUM_URL/connectors/${debezium_connector_name}/config -d "$(echo $debezium_connector_config | jq -cr '.config')"
+        echo "==> Connector - $debezium_connector_name - already exists. Updating config."
+        curl -s -XPUT -H 'Content-Type: application/json' $DEBEZIUM_URL/connectors/${debezium_connector_name}/config -d "$(echo $debezium_connector_config | jq -cr '.config')" | jq
       fi
     done
+    echo "==> Starting deletion process for old debezium connectors."
     debezium_new_connectors_list=${debezium_new_connectors_list[@]}
     for connector_to_delete in $debezium_existing_connectors_list; do
       if_exists=$(contains $debezium_new_connectors_list $connector_to_delete)
       if [ -z "$if_exists" ]; then
-        curl -s -XDELETE $DEBEZIUM_URL/connectors/${connector_to_delete}
+        echo "==> Deleting old connector - $connector_to_delete."
+        curl -s -XDELETE $DEBEZIUM_URL/connectors/${connector_to_delete} | jq
       fi
     done
   fi
 
-  echo "==> OPENSEARCH CONNECTORS"
+  echo "====> OPENSEARCH CONNECTORS"
   if [ -d opensearch-connectors ]; then
+    echo "==> Starting Opensearch Connector Initialization"
     os_existing_connectors_list=$(curl -s $OS_KAFKA_CONNECTOR_URL/connectors | jq -cr '.[]')
     os_new_connectors_list=()
     for os_conn in opensearch-connectors/* ; do
@@ -224,19 +240,23 @@ startUpCommand: |-
 
       if_exists=$(contains $os_existing_connectors_list $os_connector_name)
       if [ -z "$if_exists" ]; then
-        curl -s -XPOST -H 'Content-Type: application/json' $OS_KAFKA_CONNECTOR_URL/connectors -d "$os_connector_config"
+        echo "==> Creating new Connector - $os_connector_name."
+        curl -s -XPOST -H 'Content-Type: application/json' $OS_KAFKA_CONNECTOR_URL/connectors -d "$os_connector_config" | jq
       else
-        curl -s -XPUT -H 'Content-Type: application/json' $OS_KAFKA_CONNECTOR_URL/connectors/${os_connector_name}/config -d "$(echo $os_connector_config | jq -cr '.config')"
+        echo "==> Connector - $os_connector_name - already exists. Updating config."
+        curl -s -XPUT -H 'Content-Type: application/json' $OS_KAFKA_CONNECTOR_URL/connectors/${os_connector_name}/config -d "$(echo $os_connector_config | jq -cr '.config')" | jq
       fi
     done
+    echo "==> Starting deletion process for old opensearch-connectors."
     os_new_connectors_list=${os_new_connectors_list[@]}
     for connector_to_delete in $os_existing_connectors_list; do
       if_exists=$(contains $os_new_connectors_list $connector_to_delete)
       if [ -z "$if_exists" ]; then
-        curl -s -XDELETE $OS_KAFKA_CONNECTOR_URL/connectors/${connector_to_delete}
+        echo "==> Deleting old connector - $connector_to_delete."
+        curl -s -XDELETE $OS_KAFKA_CONNECTOR_URL/connectors/${connector_to_delete} | jq
       fi
     done
   fi
 
-  echo "==> OPENSEARCH DASHBOARDS"
+  echo "====> OPENSEARCH DASHBOARDS"
   ## TODO: Load dashboards also from this script

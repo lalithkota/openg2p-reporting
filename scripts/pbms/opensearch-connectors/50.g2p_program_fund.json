@@ -1,10 +1,12 @@
 {
-    "name": "pbms_g2p_program_fund_${DB_PREFIX_INDEX//-/_}",
+    "name": "g2p_program_fund_${DB_PREFIX_INDEX}",
     "config": {
         "connector.class": "io.aiven.kafka.connect.opensearch.OpensearchSinkConnector",
         "connection.url": "${OPENSEARCH_URL}",
+        "connection.username": "${OPENSEARCH_USERNAME}",
+        "connection.password": "${OPENSEARCH_PASSWORD}",
         "tasks.max": "1",
-        "topics": "${DB_PREFIX_INDEX//-/_}.public.g2p_program_fund",
+        "topics": "${DB_PREFIX_INDEX}.public.g2p_program_fund",
         "key.ignore": "false",
         "schema.ignore": "true",
         "key.converter": "org.apache.kafka.connect.json.JsonConverter",
@@ -13,6 +15,8 @@
         "value.converter.schemas.enable": "true",
 
         "behavior.on.null.values": "delete",
+        "behavior.on.malformed.documents": "warn",
+        "behavior.on.version.conflict": "warn",
 
         "transforms": "keyExtId,debezExtract,tsconvert01,tsconvert02,tsconvert03,tsconvert04,tsSelect",
 
@@ -20,8 +24,7 @@
         "transforms.keyExtId.field": "id",
 
         "transforms.debezExtract.type": "io.debezium.transforms.ExtractNewRecordState",
-        "transforms.debezExtract.delete.handling.mode": "drop",
-        "transforms.debezExtract.drop.tombstones": "false",
+        "transforms.debezExtract.delete.tombstone.handling.mode": "tombstone",
         "transforms.debezExtract.add.fields": "source.ts_ms:ts_ms,table,lsn",
         "transforms.debezExtract.add.fields.prefix": "source_",
 

@@ -334,18 +334,36 @@ kafkaBootstrapServers: '{{ .Release.Name }}-kafka:9092'
 ## Metrics based variables, like JMX settings, can be set from "metrics.envVars".
 envVars:
   KAFKA_HEAP_OPTS: '{{ tpl .Values.heapOpts $ }}'
-  CONNECT_BOOTSTRAP_SERVERS: '{{ tpl .Values.kafkaBootstrapServers $ }}'
-  CONNECT_GROUP_ID: 1
-
-  CONNECT_HOST_NAME: '0.0.0.0'
-  CONNECT_REST_PORT: '{{ .Values.containerPort }}'
-
-  # TODO: Evaluate the ADVERTISED options
-  CONNECT_REST_ADVERTISED_HOST_NAME: '{{ include "common.names.fullname" . }}'
-  CONNECT_REST_ADVERTISED_PORT: '{{ .Values.service.port }}'
-
-  CONNECT_CONFIG_STORAGE_TOPIC: '{{ include "common.names.name" . }}-configs'
-  CONNECT_OFFSET_STORAGE_TOPIC: '{{ include "common.names.name" . }}-offsets'
-  CONNECT_STATUS_STORAGE_TOPIC: '{{ include "common.names.name" . }}-status'
 
 envVarsFrom: {}
+
+propertiesOverride:
+  bootstrap.servers: '{{ tpl .Values.kafkaBootstrapServers $ }}'
+  group.id: 2
+
+  # host.name: '0.0.0.0'
+  # rest.port: '{{ .Values.containerPort }}'
+  listeners: 'HTTP://:{{ .Values.containerPort }}'
+
+  # TODO: Evaluate the ADVERTISED options
+  rest.advertised.host.name: '{{ include "common.names.fullname" . }}'
+  rest.advertised.port: '{{ .Values.service.port }}'
+  #rest.advertised.listener:
+
+  config.storage.topic: '{{ include "common.names.name" . }}-configs'
+  config.storage.replication.factor: 1
+  offset.storage.topic: '{{ include "common.names.name" . }}-offsets'
+  offset.storage.replication.factor: 1
+  #offset.storage.partitions: 25
+  status.storage.topic: '{{ include "common.names.name" . }}-status'
+  status.storage.replication.factor: 1
+  #status.storage.partitions: 5
+
+  key.converter: org.apache.kafka.connect.json.JsonConverter
+  value.converter: org.apache.kafka.connect.json.JsonConverter
+  key.converter.schemas.enable: true
+  value.converter.schemas.enable: true
+
+  offset.flush.interval.ms: 10000
+
+  plugin.path: /opt/kafka/connectors

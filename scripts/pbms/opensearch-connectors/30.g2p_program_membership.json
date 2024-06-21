@@ -1,10 +1,12 @@
 {
-    "name": "pbms_g2p_program_membership_${DB_PREFIX_INDEX//-/_}",
+    "name": "g2p_program_membership_${DB_PREFIX_INDEX}",
     "config": {
         "connector.class": "io.aiven.kafka.connect.opensearch.OpensearchSinkConnector",
         "connection.url": "${OPENSEARCH_URL}",
+        "connection.username": "${OPENSEARCH_USERNAME}",
+        "connection.password": "${OPENSEARCH_PASSWORD}",
         "tasks.max": "1",
-        "topics": "${DB_PREFIX_INDEX//-/_}.public.g2p_program_membership",
+        "topics": "${DB_PREFIX_INDEX}.public.g2p_program_membership",
         "key.ignore": "false",
         "schema.ignore": "true",
         "key.converter": "org.apache.kafka.connect.json.JsonConverter",
@@ -13,6 +15,8 @@
         "value.converter.schemas.enable": "true",
 
         "behavior.on.null.values": "delete",
+        "behavior.on.malformed.documents": "warn",
+        "behavior.on.version.conflict": "warn",
 
         "transforms": "keyExtId,debezExtract,tsconvert01,tsconvert02,tsconvert03,tsconvert04,join01,join02,join03,tsSelect",
 
@@ -20,8 +24,7 @@
         "transforms.keyExtId.field": "id",
 
         "transforms.debezExtract.type": "io.debezium.transforms.ExtractNewRecordState",
-        "transforms.debezExtract.delete.handling.mode": "drop",
-        "transforms.debezExtract.drop.tombstones": "false",
+        "transforms.debezExtract.delete.tombstone.handling.mode": "tombstone",
         "transforms.debezExtract.add.fields": "source.ts_ms:ts_ms,table,lsn",
         "transforms.debezExtract.add.fields.prefix": "source_",
 
@@ -45,7 +48,7 @@
         "transforms.join01.output.field": "program_name",
         "transforms.join01.input.default.values": "null",
         "transforms.join01.es.url": "${OPENSEARCH_URL}",
-        "transforms.join01.es.index": "${DB_PREFIX_INDEX//-/_}.public.g2p_program",
+        "transforms.join01.es.index": "${DB_PREFIX_INDEX}.public.g2p_program",
         "transforms.join01.es.input.query.add.keyword": "false",
         "transforms.join01.es.input.fields": "id",
         "transforms.join01.es.output.field": "name",
@@ -58,7 +61,7 @@
         "transforms.join02.output.field": "registrant_create_datetime",
         "transforms.join02.input.default.values": "null",
         "transforms.join02.es.url": "${OPENSEARCH_URL}",
-        "transforms.join02.es.index": "${DB_PREFIX_INDEX//-/_}.public.res_partner",
+        "transforms.join02.es.index": "${DB_PREFIX_INDEX}.public.res_partner",
         "transforms.join02.es.input.query.add.keyword": "false",
         "transforms.join02.es.input.fields": "id",
         "transforms.join02.es.output.field": "create_date",
@@ -71,7 +74,7 @@
         "transforms.join03.output.field": "gender",
         "transforms.join03.input.default.values": "null",
         "transforms.join03.es.url": "${OPENSEARCH_URL}",
-        "transforms.join03.es.index": "${DB_PREFIX_INDEX//-/_}.public.res_partner",
+        "transforms.join03.es.index": "${DB_PREFIX_INDEX}.public.res_partner",
         "transforms.join03.es.input.fields": "id",
         "transforms.join03.es.output.field": "gender",
         "transforms.join03.es.security.enabled": "${OPENSEARCH_SECURITY_ENABLED}",
