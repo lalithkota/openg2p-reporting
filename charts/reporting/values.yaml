@@ -10,7 +10,6 @@ global:
   keycloakIssuerUrl: '{{ tpl .Values.global.keycloakBaseUrl $ }}/realms/master'
 
 commonLabels: {}
-
 commonAnnotations: {}
 
 debezium:

@@ -1,6 +1,6 @@
 FROM maven:3.9.6-eclipse-temurin-21-alpine AS builder
 
-ARG DEBEZIUM_VERSION=2.6.1.Final
+ARG DEBEZIUM_VERSION=2.6.2.Final
 COPY kafka-connect-transforms /kafka-connect-transforms
 RUN cd /kafka-connect-transforms && \
     mvn install -DskipTests && \
