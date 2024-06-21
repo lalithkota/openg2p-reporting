@@ -24,7 +24,7 @@ jobs:
         run: |
           OS_KAFKA_CONNECTOR_DOCKER_BUILD="false"
           for changed_file in ${{ steps.files.outputs.all }}; do
-            if [[ ${changed_file} =~ ^[opensearch-kafka-connector] ]]; then
+            if [[ ${changed_file} =~ ^opensearch-kafka-connector ]]; then
               OS_KAFKA_CONNECTOR_DOCKER_BUILD="true"
               break
             fi
@@ -65,7 +65,7 @@ jobs:
         run: |
           REPORTING_INIT_DOCKER_BUILD="false"
           for changed_file in ${{ steps.files.outputs.all }}; do
-            if [[ ${changed_file} =~ ^[reporting-init-docker] ]]; then
+            if [[ ${changed_file} =~ ^reporting-init-docker ]]; then
               REPORTING_INIT_DOCKER_BUILD="true"
               break
             fi
