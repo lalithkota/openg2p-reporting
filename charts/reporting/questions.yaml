@@ -16,7 +16,7 @@ questions:
   label: Install OpenSearch?
 
 # Kafka
-- variable: global.reportingKafkaHostname
+- variable: kafkaUi.hostname
   description: Hostname with which Kafka UI should be accessible
   type: string
   label: Kafka UI Hostname
