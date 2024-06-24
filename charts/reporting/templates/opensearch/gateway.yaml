@@ -5,8 +5,10 @@ apiVersion: networking.istio.io/v1beta1
 kind: Gateway
 metadata:
   name: {{ include "common.names.fullname" .Subcharts.opensearch }}
-  labels:
-    {{- include "socialRegistry.labels" . | nindent 4 }}
+  labels: {{ include "common.labels.standard" (dict "customLabels" .Values.opensearch.commonLabels "context" .Subcharts.opensearch) | nindent 4 }}
+  {{- if .Values.opensearch.commonAnnotations }}
+  annotations: {{ include "common.tplvalues.render" (dict "value" .Values.opensearch.commonAnnotations "context" $) | nindent 4 }}
+  {{- end }}
 spec:
   selector:
     {{ toYaml .Values.opensearch.istio.gateway.ingressController | nindent 4 }}

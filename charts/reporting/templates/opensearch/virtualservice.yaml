@@ -5,13 +5,15 @@ apiVersion: networking.istio.io/v1alpha3
 kind: VirtualService
 metadata:
   name: {{ include "common.names.fullname" .Subcharts.opensearch }}
-  labels:
-    {{- include "socialRegistry.labels" . | nindent 4 }}
+  labels: {{ include "common.labels.standard" (dict "customLabels" .Values.opensearch.commonLabels "context" .Subcharts.opensearch) | nindent 4 }}
+  {{- if .Values.opensearch.commonAnnotations }}
+  annotations: {{ include "common.tplvalues.render" (dict "value" .Values.opensearch.commonAnnotations "context" $) | nindent 4 }}
+  {{- end }}
 spec:
   hosts:
   - {{ default .Values.opensearch.hostname .Values.opensearch.istio.virtualservice.host | quote }}
   gateways:
-  - {{ default (include "socialRegistry.fullname" .) .Values.opensearch.istio.virtualservice.gateway }}
+  - {{ default (include "common.names.fullname" .Subcharts.opensearch) .Values.opensearch.istio.virtualservice.gateway }}
   http:
   - headers:
       request:
