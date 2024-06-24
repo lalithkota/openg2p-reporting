@@ -96,7 +96,7 @@ jobs:
         done
         helm repo index --url https://openg2p.github.io/openg2p-helm/ --merge rancher/index.yaml rancher
         for chartname in $RANCHER_CHARTS; do
-          rm rancher/${chartname}*.tgz
+          rm rancher/${chartname}*.tgz || true
         done
       if: env.SKIP != 'TRUE'
 
@@ -107,6 +107,6 @@ jobs:
         author_name: openg2pbot
         author_email: bot@openg2p.org
         default_author: user_info
-        message: 'added social registry helm charts for publish openg2p/openg2p-reporting@${{ github.sha }}'
+        message: 'added reporting helm charts for publish openg2p/openg2p-reporting@${{ github.sha }}'
         add: './*.tgz ./index.yaml rancher/index.yaml'
       if: env.SKIP != 'TRUE'

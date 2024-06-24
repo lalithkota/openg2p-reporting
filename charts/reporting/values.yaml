@@ -65,6 +65,13 @@ kafkaUi:
   oidcClientId: openg2p-reporting-kafka
   oidcClientSecret: ''
 
+  commonLabels:
+    app.kubernetes.io/name: '{{ include "common.names.name" . }}-ui'
+  commonAnnotations: {}
+  podLabels:
+    app.kubernetes.io/name: '{{ include "common.names.name" . }}-ui'
+  podAnnotations: {}
+
   replicaCount: 1
 
   service:
@@ -144,9 +151,6 @@ kafkaUi:
   affinity: {}
   nodeSelector: {}
   tolerations: []
-
-  podLabels: {}
-  podAnnotations: {}
 
   priorityClassName: ""
   lifecycleHooks: {}

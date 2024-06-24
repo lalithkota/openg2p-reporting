@@ -4,12 +4,9 @@ apiVersion: {{ include "common.capabilities.deployment.apiVersion" . }}
 kind: Deployment
 metadata:
   name: {{ include "common.names.fullname" .Subcharts.kafka }}-ui
-  labels: {{- include "common.labels.standard" . | nindent 4 }}
-    {{- if .Values.commonLabels }}
-    {{- include "common.tplvalues.render" ( dict "value" .Values.commonLabels "context" $ ) | nindent 4 }}
-    {{- end }}
-  {{- if .Values.commonAnnotations }}
-  annotations: {{- include "common.tplvalues.render" ( dict "value" .Values.commonAnnotations "context" $ ) | nindent 4 }}
+  labels: {{ include "common.labels.standard" (dict "customLabels" .Values.kafkaUi.commonLabels "context" .Subcharts.kafka) | nindent 4 }}
+  {{- if .Values.kafka.commonAnnotations }}
+  annotations: {{ include "common.tplvalues.render" (dict "value" .Values.kafkaUi.commonAnnotations "context" $) | nindent 4 }}
   {{- end }}
 spec:
   replicas: {{ .Values.kafkaUi.replicaCount }}
@@ -20,13 +17,10 @@ spec:
     matchLabels: {{- include "common.labels.matchLabels" (dict "customLabels" .Values.kafkaUi.podLabels "context" $) | nindent 6 }}
   template:
     metadata:
-      {{- if .Values.kafkaUi.podAnnotations }}
-      annotations: {{- include "common.tplvalues.render" (dict "value" .Values.podAnnotations "context" $) | nindent 8 }}
+      labels: {{ include "common.labels.standard" (dict "customLabels" .Values.kafkaUi.podLabels "context" .Subcharts.kafka) | nindent 8 }}
+      {{- if .Values.kafkaUi.commonAnnotations }}
+      annotations: {{ include "common.tplvalues.render" (dict "value" .Values.kafkaUi.podAnnotations "context" $) | nindent 8 }}
       {{- end }}
-      labels: {{- include "common.labels.standard" . | nindent 8 }}
-        {{- if .Values.kafkaUi.podLabels }}
-        {{- include "common.tplvalues.render" (dict "value" .Values.kafkaUi.podLabels "context" $) | nindent 8 }}
-        {{- end }}
     spec:
       serviceAccountName: {{ include "kafka.serviceAccountName" .Subcharts.kafka }}
       {{- include "common.images.pullSecrets" (dict "images" (list .Values.kafkaUi.image) "global" .Values.global) | nindent 6 }}
