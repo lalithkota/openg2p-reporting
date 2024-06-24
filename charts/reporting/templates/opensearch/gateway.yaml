@@ -17,7 +17,7 @@ spec:
       number: 8080
       protocol: HTTP2
     hosts:
-      - {{ default .Values.global.opensearchHostname .Values.opensearch.istio.gateway.host | quote }}
+      - {{ default .Values.opensearch.hostname .Values.opensearch.istio.gateway.host | quote }}
     {{- if .Values.opensearch.istio.gateway.httpTlsRedirect }}
     tls:
       httpsRedirect: true
@@ -29,7 +29,7 @@ spec:
       number: 8443
       protocol: HTTPS
     hosts:
-      - {{ default .Values.global.opensearchHostname .Values.opensearch.istio.gateway.host | quote }}
+      - {{ default .Values.opensearch.hostname .Values.opensearch.istio.gateway.host | quote }}
     tls:
       {{ toYaml (omit .Values.opensearch.istio.gateway.tls "enabled") | nindent 6 }}
   {{- end }}

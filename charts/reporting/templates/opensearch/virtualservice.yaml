@@ -9,14 +9,14 @@ metadata:
     {{- include "socialRegistry.labels" . | nindent 4 }}
 spec:
   hosts:
-  - {{ default .Values.global.opensearchHostname .Values.opensearch.istio.virtualservice.host | quote }}
+  - {{ default .Values.opensearch.hostname .Values.opensearch.istio.virtualservice.host | quote }}
   gateways:
   - {{ default (include "socialRegistry.fullname" .) .Values.opensearch.istio.virtualservice.gateway }}
   http:
   - headers:
       request:
         set:
-          x-forwarded-host: {{ default .Values.global.opensearchHostname .Values.opensearch.istio.virtualservice.host | quote }}
+          x-forwarded-host: {{ default .Values.opensearch.hostname .Values.opensearch.istio.virtualservice.host | quote }}
           x-forwarded-proto: https
     route:
     - destination:

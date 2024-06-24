@@ -7,14 +7,12 @@
 #   imagePullSecrets:
 #     - myRegistryKeySecretName
 #   storageClass: myStorageClass
-global:
-  reportingInstallationName: '{{ .Release.Name }}-reporting'
 
-  reportingDebeziumInstallationName: '{{ tpl .Values.global.reportingInstallationName $ }}-debezium'
-  reportingOsKafkaConnectorInstallationName: '{{ tpl .Values.global.reportingInstallationName $ }}-os-kafka-connector'
-
-  reportingOpensearchInstallationName: '{{ tpl .Values.global.reportingInstallationName $ }}-opensearch'
-  reportingPostgresqlInstallationName: '{{ .Release.Name }}-postgresql'
+reportingInstallationName: '{{ .Release.Name }}-reporting'
+debeziumInstallationName: '{{ tpl .Values.reportingInstallationName $ }}-debezium'
+osKafkaConnectorInstallationName: '{{ tpl .Values.reportingInstallationName $ }}-os-kafka-connector'
+opensearchInstallationName: '{{ tpl .Values.reportingInstallationName $ }}-opensearch'
+postgresqlInstallationName: '{{ .Release.Name }}-postgresql'
 
 ## Add labels to all the deployed resources
 ##
@@ -143,17 +141,17 @@ gitConfig:
 envVars:
   GIT_CONFIG_ENABLED: '{{ .Values.gitConfig.enabled }}'
 
-  DEBEZIUM_URL: '{{ tpl .Values.global.reportingDebeziumInstallationName $ }}'
-  OS_KAFKA_CONNECTOR_URL: '{{ tpl .Values.global.reportingOsKafkaConnectorInstallationName $ }}'
+  DEBEZIUM_URL: '{{ tpl .Values.debeziumInstallationName $ }}'
+  OS_KAFKA_CONNECTOR_URL: '{{ tpl .Values.osKafkaConnectorInstallationName $ }}'
 
-  DB_HOSTNAME: '{{ tpl .Values.global.reportingPostgresqlInstallationName $ }}'
+  DB_HOSTNAME: '{{ tpl .Values.postgresqlInstallationName $ }}'
   DB_PORT: 5432
   DB_USER: postgres
   DB_NAME: '' # To be filled
   DB_PREFIX_INDEX: '{{ .Release.Namespace | replace "-" "_" }}_{{ .Release.Name | replace "-" "_" }}' # To be modified according to app
   DEFAULT_DEBEZIUM_CONNECTOR_HEARTBEAT_MS: 5000
 
-  OPENSEARCH_URL: 'https://{{ tpl .Values.global.reportingOpensearchInstallationName $ }}:9200'
+  OPENSEARCH_URL: 'https://{{ tpl .Values.opensearchInstallationName $ }}:9200'
 
   OPENSEARCH_SECURITY_ENABLED: true
   OPENSEARCH_USERNAME: admin
@@ -163,11 +161,11 @@ envVars:
 envVarsFrom:
   DB_PASS:
     secretKeyRef:
-      name: '{{ tpl .Values.global.reportingPostgresqlInstallationName $ }}'
+      name: '{{ tpl .Values.postgresqlInstallationName $ }}'
       key: postgres-password
   OPENSEARCH_PASSWORD:
     secretKeyRef:
-      name: '{{ tpl .Values.global.reportingOpensearchInstallationName $ }}'
+      name: '{{ tpl .Values.opensearchInstallationName $ }}'
       key: opensearch-password
 
 startUpCommand: |-

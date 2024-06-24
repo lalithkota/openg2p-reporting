@@ -15,14 +15,14 @@ metadata:
   {{- end }}
 spec:
   hosts:
-  - {{ default .Values.global.reportingKafkaHostname .Values.kafkaUi.istio.virtualservice.host | quote }}
+  - {{ default .Values.kafkaUi.hostname .Values.kafkaUi.istio.virtualservice.host | quote }}
   gateways:
   - {{ default (include "common.names.fullname" .) .Values.kafkaUi.istio.virtualservice.gateway }}
   http:
   - headers:
       request:
         set:
-          x-forwarded-host: {{ default .Values.global.reportingKafkaHostname .Values.kafkaUi.istio.virtualservice.host | quote }}
+          x-forwarded-host: {{ default .Values.kafkaUi.hostname .Values.kafkaUi.istio.virtualservice.host | quote }}
           x-forwarded-proto: https
     match:
     - uri:

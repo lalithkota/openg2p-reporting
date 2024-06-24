@@ -22,19 +22,19 @@ questions:
   label: Git Config Repository Subdirectory
   show_if: "gitConfig.enabled=true"
 
-- variable: global.reportingInstallationName
+- variable: reportingInstallationName
   description: If reporting infra is already installed, give the name of the installation here.
   type: reference_service
   label: Reporting Installation Name
   group: Advanced Settings
 
-- variable: global.reportingOpensearchInstallationName
+- variable: opensearchInstallationName
   description: Give the name of the OpenSearch instance, with which opensearch-kafka-connector should connect to.
   type: reference_service
   label: OpenSearch Installation Name
   group: Advanced Settings
 
-- variable: global.reportingPostgresqlInstallationName
+- variable: postgresqlInstallationName
   description: Give the name of the Postgresql instance, with which debezium should connect to.
   type: reference_service
   label: Postgresql Installation Name
