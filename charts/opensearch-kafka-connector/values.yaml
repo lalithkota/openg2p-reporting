@@ -11,6 +11,7 @@
 ## Add labels to all the deployed resources
 ##
 commonLabels: {}
+
 ## Add annotations to all the deployed resources
 ##
 commonAnnotations: {}
