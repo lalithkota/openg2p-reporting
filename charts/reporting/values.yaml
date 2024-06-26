@@ -228,6 +228,7 @@ kafkaUi:
               actions: all
             - resource: acl
               actions: all
+
   istio:
     enabled: true
     virtualservice:
