@@ -241,11 +241,6 @@ initContainers: []
 ##
 sidecars: []
 
-## Specifies whether RBAC resources should be created
-##
-rbac:
-  create: true
-
 ## Specifies whether a ServiceAccount should be created
 ##
 serviceAccount:
