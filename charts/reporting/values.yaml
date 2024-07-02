@@ -32,7 +32,7 @@ kafka:
   controller:
     heapOpts: ""
     replicaCount: 1
-    resources: {}
+    resourcesPreset: "micro"
   broker:
     heapOpts: ""
     persistence:
@@ -266,6 +266,7 @@ opensearch:
       size: 8Gi
     heapSize: 256m
     masterOnly: false
+    resourcesPreset: "micro"
 
   data:
     replicaCount: 0
@@ -348,6 +349,7 @@ opensearch:
   dashboards:
     enabled: true
     replicaCount: 1
+    resourcesPreset: "micro"
 
     extraVolumes:
     - name: dashboards-config
