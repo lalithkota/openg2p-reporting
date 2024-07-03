@@ -21,6 +21,11 @@ commonLabels: {}
 ##
 commonAnnotations: {}
 
+hookAnnotations:
+  "helm.sh/hook": post-install,post-upgrade
+  "helm.sh/hook-weight": "0"
+  "helm.sh/hook-delete-policy": before-hook-creation
+
 backoffLimit: 5
 
 image:
