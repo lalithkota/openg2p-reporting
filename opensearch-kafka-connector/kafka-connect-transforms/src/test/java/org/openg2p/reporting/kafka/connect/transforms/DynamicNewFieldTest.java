@@ -39,10 +39,10 @@ public class DynamicNewFieldTest {
         config.put(DynamicNewField.ES_URL_CONFIG, "http://localhost:9200");
         config.put(DynamicNewField.ES_INDEX_CONFIG, "testing_reg_cen");
         config.put(DynamicNewField.ES_INPUT_FIELDS_CONFIG, "id,lang_code");
-        config.put(DynamicNewField.ES_OUTPUT_FIELD_CONFIG, "name");
+        config.put(DynamicNewField.ES_OUTPUT_FIELDS_CONFIG, "name");
         config.put(DynamicNewField.INPUT_FIELDS_CONFIG, "regcntr_id,lang_code");
         config.put(DynamicNewField.DEFAULT_VALUE_CONFIG, "null,null");
-        config.put(DynamicNewField.OUTPUT_FIELD_CONFIG, "regcntr_name");
+        config.put(DynamicNewField.OUTPUT_FIELDS_CONFIG, "regcntr_name");
 
         xformValue.configure(config);
 
@@ -78,10 +78,10 @@ public class DynamicNewFieldTest {
         config.put(DynamicNewField.ES_URL_CONFIG, "http://localhost:9200");
         config.put(DynamicNewField.ES_INDEX_CONFIG, "testing_reg_cen");
         config.put(DynamicNewField.ES_INPUT_FIELDS_CONFIG, "id,lang_code");
-        config.put(DynamicNewField.ES_OUTPUT_FIELD_CONFIG, "name");
+        config.put(DynamicNewField.ES_OUTPUT_FIELDS_CONFIG, "name");
         config.put(DynamicNewField.INPUT_FIELDS_CONFIG, "regcntr_id,lang_code");
         config.put(DynamicNewField.DEFAULT_VALUE_CONFIG, "null,null");
-        config.put(DynamicNewField.OUTPUT_FIELD_CONFIG, "regcntr_name");
+        config.put(DynamicNewField.OUTPUT_FIELDS_CONFIG, "regcntr_name");
 
         xformValue.configure(config);
 
@@ -117,10 +117,10 @@ public class DynamicNewFieldTest {
         config.put(DynamicNewField.ES_URL_CONFIG, "http://localhost:9200");
         config.put(DynamicNewField.ES_INDEX_CONFIG, "laliths_temp_reg_cen");
         config.put(DynamicNewField.ES_INPUT_FIELDS_CONFIG, "id");
-        config.put(DynamicNewField.ES_OUTPUT_FIELD_CONFIG, "name");
+        config.put(DynamicNewField.ES_OUTPUT_FIELDS_CONFIG, "name");
         config.put(DynamicNewField.INPUT_FIELDS_CONFIG, "regcntr_id");
         config.put(DynamicNewField.DEFAULT_VALUE_CONFIG, "null");
-        config.put(DynamicNewField.OUTPUT_FIELD_CONFIG, "regcntr_name");
+        config.put(DynamicNewField.OUTPUT_FIELDS_CONFIG, "regcntr_name");
 
         xformValue.configure(config);
         SourceRecord transformed = xformValue.apply(createRecordSchemaless(null));
