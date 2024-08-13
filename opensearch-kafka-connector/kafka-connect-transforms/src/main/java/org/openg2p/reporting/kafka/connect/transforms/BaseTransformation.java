@@ -46,42 +46,32 @@ public abstract class BaseTransformation<R extends ConnectRecord<R>> implements 
         return record;
     }
 
-    public abstract Schema operatingSchema(R record);
-
-    public abstract Object operatingValue(R record);
-
-    public abstract R newRecord(R record, Schema updatedSchema, Object updatedValue);
-
-    public static class Key<R extends ConnectRecord<R>> extends BaseTransformation<R> {
-        @Override
-        public Schema operatingSchema(R record) {
+    public Schema operatingSchema(R record){
+        if (this.getClass().getName().endsWith("Key")) {
             return record.keySchema();
-        }
-
-        @Override
-        public Object operatingValue(R record) {
-            return record.key();
-        }
-
-        @Override
-        public R newRecord(R record, Schema updatedSchema, Object updatedValue) {
-            return record.newRecord(record.topic(), record.kafkaPartition(), updatedSchema, updatedValue, record.valueSchema(), record.value(), record.timestamp());
+        } else if (this.getClass().getName().endsWith("Value")) {
+            return record.valueSchema();
+        } else {
+            return record.valueSchema();
         }
     }
 
-    public static class Value<R extends ConnectRecord<R>> extends BaseTransformation<R> {
-        @Override
-        public Schema operatingSchema(R record) {
-            return record.valueSchema();
-        }
-
-        @Override
-        public Object operatingValue(R record) {
+    public Object operatingValue(R record){
+        if (this.getClass().getName().endsWith("Key")) {
+            return record.key();
+        } else if (this.getClass().getName().endsWith("Value")) {
+            return record.value();
+        } else {
             return record.value();
         }
+    }
 
-        @Override
-        public R newRecord(R record, Schema updatedSchema, Object updatedValue) {
+    public R newRecord(R record, Schema updatedSchema, Object updatedValue){
+        if (this.getClass().getName().endsWith("Key")) {
+            return record.newRecord(record.topic(), record.kafkaPartition(), updatedSchema, updatedValue, record.valueSchema(), record.value(), record.timestamp());
+        } else if (this.getClass().getName().endsWith("Value")) {
+            return record.newRecord(record.topic(), record.kafkaPartition(), record.keySchema(), record.key(), updatedSchema, updatedValue, record.timestamp());
+        } else {
             return record.newRecord(record.topic(), record.kafkaPartition(), record.keySchema(), record.key(), updatedSchema, updatedValue, record.timestamp());
         }
     }

@@ -17,6 +17,8 @@ import java.util.HashMap;
 import java.util.Map;
 
 public abstract class TimestampSelector<R extends ConnectRecord<R>> extends BaseTransformation<R> {
+    public static class Key<R extends ConnectRecord<R>> extends TimestampSelector<R>{}
+    public static class Value<R extends ConnectRecord<R>> extends TimestampSelector<R>{}
 
     private class Config{
         String[] tsOrder;

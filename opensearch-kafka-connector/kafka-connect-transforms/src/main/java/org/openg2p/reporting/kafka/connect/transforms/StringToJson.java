@@ -22,6 +22,8 @@ import java.util.HashMap;
 import java.util.Map;
 
 public abstract class StringToJson<R extends ConnectRecord<R>> extends BaseTransformation<R> {
+    public static class Key<R extends ConnectRecord<R>> extends StringToJson<R>{}
+    public static class Value<R extends ConnectRecord<R>> extends StringToJson<R>{}
 
     public static final String PURPOSE = "String to json converter";
     public static final String INPUT_FIELD_CONFIG = "input.field";

@@ -21,6 +21,9 @@ import java.util.TimeZone;
 
 
 public abstract class TimestampConverterAdv<R extends ConnectRecord<R>> extends BaseTransformation<R> {
+    public static class Key<R extends ConnectRecord<R>> extends TimestampConverterAdv<R>{}
+    public static class Value<R extends ConnectRecord<R>> extends TimestampConverterAdv<R>{}
+
     public static class Config {
         public enum InputType {
             milli_sec,

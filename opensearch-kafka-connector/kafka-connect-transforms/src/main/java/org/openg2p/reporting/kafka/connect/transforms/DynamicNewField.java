@@ -37,6 +37,9 @@ import java.util.HashMap;
 import java.util.Map;
 
 public abstract class DynamicNewField<R extends ConnectRecord<R>> extends BaseTransformation<R> {
+    public static class Key<R extends ConnectRecord<R>> extends DynamicNewField<R>{}
+    public static class Value<R extends ConnectRecord<R>> extends DynamicNewField<R>{}
+
     public abstract class Config{
         String type;
         String[] inputFields;
