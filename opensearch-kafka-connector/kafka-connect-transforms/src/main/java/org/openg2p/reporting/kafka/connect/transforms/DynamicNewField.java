@@ -129,7 +129,7 @@ public abstract class DynamicNewField<R extends ConnectRecord<R>> extends BaseTr
                 } else {
                     requestJson += "\"" + esInputFields[i] + ".keyword\": ";
                 }
-                requestJson += value instanceof String ? "\"" + value + "\"" : value;
+                requestJson += (value instanceof Number || value instanceof Boolean) ? value : "\"" + value + "\"";
                 requestJson += "}}";
             }
             requestJson += "]}}}";
@@ -258,7 +258,7 @@ public abstract class DynamicNewField<R extends ConnectRecord<R>> extends BaseTr
         .define(ES_INDEX_CONFIG, ConfigDef.Type.STRING, "", ConfigDef.Importance.HIGH, "Name of the index in ES to search")
         .define(ES_INPUT_FIELDS_CONFIG, ConfigDef.Type.STRING, "", ConfigDef.Importance.HIGH, "ES documents with given input field will be searched for. This field tells the key name")
         .define(ES_OUTPUT_FIELDS_CONFIG, ConfigDef.Type.STRING, "", ConfigDef.Importance.HIGH, "If a successful match is made with the above input field+value, the values of this output fields from the same document will be returned")
-        .define(ES_INPUT_QUERY_ADD_KEYWORD, ConfigDef.Type.STRING, "true", ConfigDef.Importance.HIGH, "Should add the .keyword suffix while querying ES?")
+        .define(ES_INPUT_QUERY_ADD_KEYWORD, ConfigDef.Type.STRING, "false", ConfigDef.Importance.HIGH, "Should add the .keyword suffix while querying ES?")
 
         .define(ES_SECURITY_ENABLED_CONFIG, ConfigDef.Type.STRING, "", ConfigDef.Importance.HIGH, "Is Elasticsearch security enabled?")
         .define(ES_USERNAME_CONFIG, ConfigDef.Type.STRING, "", ConfigDef.Importance.HIGH, "Elasticsearch Username")

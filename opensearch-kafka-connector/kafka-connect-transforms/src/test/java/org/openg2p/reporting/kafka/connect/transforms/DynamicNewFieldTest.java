@@ -110,7 +110,7 @@ public class DynamicNewFieldTest {
         config.put(DynamicNewField.ES_INPUT_FIELDS_CONFIG, "id");
         config.put(DynamicNewField.ES_OUTPUT_FIELDS_CONFIG, "name");
         config.put(DynamicNewField.INPUT_FIELDS_CONFIG, "regcntr_id");
-        config.put(DynamicNewField.DEFAULT_VALUE_CONFIG, "null");
+        config.put(DynamicNewField.DEFAULT_VALUE_CONFIG, "");
         config.put(DynamicNewField.OUTPUT_FIELDS_CONFIG, "regcntr_name");
 
         xformValue.configure(config);

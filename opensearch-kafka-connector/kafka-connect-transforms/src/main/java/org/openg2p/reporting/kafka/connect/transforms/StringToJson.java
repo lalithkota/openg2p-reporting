@@ -58,11 +58,7 @@ public abstract class StringToJson<R extends ConnectRecord<R>> extends BaseTrans
 
         final Map<String, Object> updatedValue = new HashMap<>(value);
 
-        if(value.get(configInputField) == null)
-            updatedValue.put(configInputField,null);
-        else if(!(value.get(configInputField) instanceof String))
-            updatedValue.put(configInputField, "ERROR: THIS WAS NOT A STRING FIELD");
-        else
+        if(value.get(configInputField) != null && value.get(configInputField) instanceof String)
             updatedValue.put(configInputField,returnSchemalessObject(new JSONObject((String)value.get(configInputField))));
 
         return newRecord(record, null, updatedValue);
@@ -84,8 +80,6 @@ public abstract class StringToJson<R extends ConnectRecord<R>> extends BaseTrans
             if(field.name().equals(configInputField)){
                 if(field.schema()==Schema.STRING_SCHEMA || field.schema()==Schema.OPTIONAL_STRING_SCHEMA)
                     updatedValue.put(field.name(), returnSchemaObject(new JSONObject((String)value.get(field))));
-                else
-                    updatedValue.put(field.name(), "ERROR: THIS FIELD SCHEMA WAS NOT STRING");
             }
             else
                 updatedValue.put(field.name(), value.get(field));
