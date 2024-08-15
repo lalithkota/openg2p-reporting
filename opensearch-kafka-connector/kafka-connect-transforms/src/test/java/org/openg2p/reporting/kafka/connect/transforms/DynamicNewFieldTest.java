@@ -1,28 +1,19 @@
 package org.openg2p.reporting.kafka.connect.transforms;
 
-import org.apache.kafka.common.config.ConfigException;
-import org.apache.kafka.connect.data.Date;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
-import org.apache.kafka.connect.data.Time;
-import org.apache.kafka.connect.data.Timestamp;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
-import java.util.Calendar;
-import java.util.Collections;
-import java.util.GregorianCalendar;
 import java.util.HashMap;
 import java.util.List;
 import java.util.ArrayList;
 import java.util.Map;
-import java.util.TimeZone;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 
 public class DynamicNewFieldTest {
     private final DynamicNewField<SourceRecord> xformValue = new DynamicNewField.Value<>();
@@ -39,10 +30,10 @@ public class DynamicNewFieldTest {
         config.put(DynamicNewField.ES_URL_CONFIG, "http://localhost:9200");
         config.put(DynamicNewField.ES_INDEX_CONFIG, "testing_reg_cen");
         config.put(DynamicNewField.ES_INPUT_FIELDS_CONFIG, "id,lang_code");
-        config.put(DynamicNewField.ES_OUTPUT_FIELD_CONFIG, "name");
+        config.put(DynamicNewField.ES_OUTPUT_FIELDS_CONFIG, "name");
         config.put(DynamicNewField.INPUT_FIELDS_CONFIG, "regcntr_id,lang_code");
         config.put(DynamicNewField.DEFAULT_VALUE_CONFIG, "null,null");
-        config.put(DynamicNewField.OUTPUT_FIELD_CONFIG, "regcntr_name");
+        config.put(DynamicNewField.OUTPUT_FIELDS_CONFIG, "regcntr_name");
 
         xformValue.configure(config);
 
@@ -78,10 +69,10 @@ public class DynamicNewFieldTest {
         config.put(DynamicNewField.ES_URL_CONFIG, "http://localhost:9200");
         config.put(DynamicNewField.ES_INDEX_CONFIG, "testing_reg_cen");
         config.put(DynamicNewField.ES_INPUT_FIELDS_CONFIG, "id,lang_code");
-        config.put(DynamicNewField.ES_OUTPUT_FIELD_CONFIG, "name");
+        config.put(DynamicNewField.ES_OUTPUT_FIELDS_CONFIG, "name");
         config.put(DynamicNewField.INPUT_FIELDS_CONFIG, "regcntr_id,lang_code");
         config.put(DynamicNewField.DEFAULT_VALUE_CONFIG, "null,null");
-        config.put(DynamicNewField.OUTPUT_FIELD_CONFIG, "regcntr_name");
+        config.put(DynamicNewField.OUTPUT_FIELDS_CONFIG, "regcntr_name");
 
         xformValue.configure(config);
 
@@ -117,10 +108,10 @@ public class DynamicNewFieldTest {
         config.put(DynamicNewField.ES_URL_CONFIG, "http://localhost:9200");
         config.put(DynamicNewField.ES_INDEX_CONFIG, "laliths_temp_reg_cen");
         config.put(DynamicNewField.ES_INPUT_FIELDS_CONFIG, "id");
-        config.put(DynamicNewField.ES_OUTPUT_FIELD_CONFIG, "name");
+        config.put(DynamicNewField.ES_OUTPUT_FIELDS_CONFIG, "name");
         config.put(DynamicNewField.INPUT_FIELDS_CONFIG, "regcntr_id");
-        config.put(DynamicNewField.DEFAULT_VALUE_CONFIG, "null");
-        config.put(DynamicNewField.OUTPUT_FIELD_CONFIG, "regcntr_name");
+        config.put(DynamicNewField.DEFAULT_VALUE_CONFIG, "");
+        config.put(DynamicNewField.OUTPUT_FIELDS_CONFIG, "regcntr_name");
 
         xformValue.configure(config);
         SourceRecord transformed = xformValue.apply(createRecordSchemaless(null));

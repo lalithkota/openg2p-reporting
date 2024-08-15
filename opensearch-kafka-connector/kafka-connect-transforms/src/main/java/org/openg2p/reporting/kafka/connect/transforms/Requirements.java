@@ -5,7 +5,6 @@ import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.DataException;
 import org.apache.kafka.connect.sink.SinkRecord;
-import org.apache.kafka.connect.data.Field;
 
 import java.util.Map;
 
@@ -59,7 +58,6 @@ public class Requirements {
 
     public static Object getNestedField(Map<String,Object> tree, String field){
         Object v=tree;
-        // System.out.println("===> Fields: "+field);
         for(String subfield: field.split("\\.")){
             v = ((Map<String,Object>)v).get(subfield);
             if(v == null){
@@ -69,24 +67,20 @@ public class Requirements {
         return v;
     }
 
-    public static Object getNestedField(Struct tree, String field){
+    public static Object[] getNestedField(Struct tree, String field){
+        // First value of list returned is the value
+        // and second is the Schema of the value
+
         Object[] ret = new Object[2];
-        ret[0]=null; ret[1]=null;
-        Object v=tree;
-        Object vSchema=null;
+
+        Schema vSchema = tree.schema();
         for(String subfield: field.split("\\.")){
             try{
-                Object tmpField = ((Struct)v).schema().field(subfield);
-                if(tmpField!=null){
-                    vSchema=((Field)tmpField).schema();
-                }
-                v = ((Struct)v).get(subfield);
-            }
-            catch(DataException de){ return ret; }
+                ret[0] = tree.get(subfield);
+                ret[1] = (vSchema = vSchema.field(subfield).schema());
+                tree = tree.getStruct(subfield);
+            } catch(DataException de){ return ret; }
         }
-        ret[0]=v;
-        ret[1]=vSchema;
         return ret;
     }
-
 }

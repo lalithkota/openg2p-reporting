@@ -5,7 +5,6 @@ import org.apache.kafka.common.cache.LRUCache;
 import org.apache.kafka.common.cache.SynchronizedCache;
 import org.apache.kafka.connect.connector.ConnectRecord;
 import org.apache.kafka.common.config.ConfigDef;
-import org.apache.kafka.connect.transforms.Transformation;
 import org.apache.kafka.common.config.AbstractConfig;
 import org.apache.kafka.common.config.ConfigException;
 import org.apache.kafka.connect.errors.DataException;
@@ -13,17 +12,6 @@ import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
-
-// import org.apache.http.HttpHost;
-// import org.elasticsearch.client.RestHighLevelClient;
-// import org.elasticsearch.client.RestClient;
-// import org.elasticsearch.client.RequestOptions;
-// import org.elasticsearch.action.search.SearchRequest;
-// import org.elasticsearch.action.search.SearchResponse;
-// import org.elasticsearch.search.SearchHit;
-// import org.elasticsearch.search.builder.SearchSourceBuilder;
-// import org.elasticsearch.index.query.QueryBuilders;
-// import org.elasticsearch.index.query.BoolQueryBuilder;
 
 import org.apache.hc.client5.http.auth.AuthScope;
 import org.apache.hc.client5.http.auth.CredentialsStore;
@@ -42,40 +30,44 @@ import org.json.JSONObject;
 import org.json.JSONException;
 
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 
-public abstract class DynamicNewField<R extends ConnectRecord<R>> implements Transformation<R> {
+public abstract class DynamicNewField<R extends ConnectRecord<R>> extends BaseTransformation<R> {
+    public static class Key<R extends ConnectRecord<R>> extends DynamicNewField<R>{}
+    public static class Value<R extends ConnectRecord<R>> extends DynamicNewField<R>{}
 
-    private abstract class Config{
+    public abstract class Config{
         String type;
         String[] inputFields;
         String[] inputDefaultValues;
-        String outputField;
+        String[] outputFields;
         Schema outputSchema;
-        Config(String type, String[] inputFields, String[] inputDefaultValues, String outputField, Schema outputSchema){
+        Config(String type, String[] inputFields, String[] inputDefaultValues, String[] outputFields, Schema outputSchema){
             this.type = type;
             this.inputFields = inputFields;
             this.inputDefaultValues = inputDefaultValues;
-            this.outputField = outputField;
+            this.outputFields = outputFields;
             this.outputSchema = outputSchema;
         }
-        Object make(Object input){
+        List<Object> make(Object input){
             return null;
         }
-        List<Object> makeList(Object input){
+        List<List<Object>> makeList(Object input){
             return null;
         }
         void close(){
         }
     }
-    private class ESQueryConfig extends Config{
+
+    public class ESQueryConfig extends Config{
         String esUrl;
         String esIndex;
         String[] esInputFields;
-        String esOutputField;
+        String[] esOutputFields;
         String esInputQueryAddKeyword;
 
         // RestHighLevelClient esClient;
@@ -85,23 +77,23 @@ public abstract class DynamicNewField<R extends ConnectRecord<R>> implements Tra
         ESQueryConfig(
             String type,
             String[] inputFields,
-            String outputField,
+            String[] outputFields,
             String[] inputDefaultValues,
             String esUrl,
             String esIndex,
             String[] esInputFields,
-            String esOutputField,
+            String[] esOutputFields,
             String esInputQueryAddKeyword,
             String esSecurity,
             String esUsername,
             String esPassword
         ) {
-            super(type,inputFields,inputDefaultValues,outputField,Schema.OPTIONAL_STRING_SCHEMA);
+            super(type,inputFields,inputDefaultValues,outputFields,Schema.OPTIONAL_STRING_SCHEMA);
 
             this.esUrl=esUrl;
             this.esIndex=esIndex;
             this.esInputFields=esInputFields;
-            this.esOutputField=esOutputField;
+            this.esOutputFields=esOutputFields;
             this.esInputQueryAddKeyword=esInputQueryAddKeyword;
 
             // esClient = new RestHighLevelClient(RestClient.builder(HttpHost.create(this.esUrl)));
@@ -116,12 +108,12 @@ public abstract class DynamicNewField<R extends ConnectRecord<R>> implements Tra
             hGet.setHeader("Content-type", "application/json");
         }
 
-        Object makeQuery(List<Object> inputValues){
+        List<Object> makeQuery(List<Object> inputValues){
             if(inputValues.size()!=inputFields.length){
-                return "Cant get all values for the mentioned " + INPUT_FIELDS_CONFIG + ". Given " + INPUT_FIELDS_CONFIG + " : " + Arrays.toString(inputFields)+ " " + inputValues;
+                return Collections.nCopies(esOutputFields.length, "Cant get all values for the mentioned " + INPUT_FIELDS_CONFIG + ". Given " + INPUT_FIELDS_CONFIG + " : " + Arrays.toString(inputFields)+ " " + inputValues);
             }
             else if(inputValues.size()==0){
-                return null;
+                return Collections.nCopies(esOutputFields.length, null);
             }
 
             String requestJson = "{\"query\": { \"bool\": { \"must\": [";
@@ -134,11 +126,10 @@ public abstract class DynamicNewField<R extends ConnectRecord<R>> implements Tra
 
                 if(!"true".equals(this.esInputQueryAddKeyword)){
                     requestJson += "\"" + esInputFields[i] + "\": ";
-                    requestJson += value;
                 } else {
                     requestJson += "\"" + esInputFields[i] + ".keyword\": ";
-                    requestJson += "\"" + value + "\"";
                 }
+                requestJson += (value instanceof Number || value instanceof Boolean) ? value : "\"" + value + "\"";
                 requestJson += "}}";
             }
             requestJson += "]}}}";
@@ -146,6 +137,8 @@ public abstract class DynamicNewField<R extends ConnectRecord<R>> implements Tra
             hGet.setEntity(new StringEntity(requestJson));
 
             JSONObject responseJson;
+            JSONObject responseSource = null;
+            List<Object> outputValues = new ArrayList<>();
 
             final int MAX_RETRIES = 5;
             for(int i=1; i <= MAX_RETRIES; i++){
@@ -155,33 +148,36 @@ public abstract class DynamicNewField<R extends ConnectRecord<R>> implements Tra
                     responseJson = new JSONObject(jsonString);
                 }
                 catch(Exception e){
-                    if(i==MAX_RETRIES) return "Error occured while making the query : " + e.getMessage();
+                    if(i==MAX_RETRIES) return Collections.nCopies(esOutputFields.length, "Error occured while making the query : " + e.getMessage());
                     else continue;
                 }
 
-                JSONObject responseSource;
-                // if(responseJson.getJSONObject("hits").getJSONArray("hits").length()!=0){
                 try{
-                    // get the top hit .. error handling not done properly
                     responseSource = responseJson.getJSONObject("hits").getJSONArray("hits").getJSONObject(0).getJSONObject("_source");
-                }
-                catch(JSONException je){
-                    if(i==MAX_RETRIES) return "Error: No hits found";
-                    else continue;
-                }
-                if(responseSource.has(esOutputField) && !responseSource.isNull(esOutputField)){
-                    return responseSource.get(esOutputField);
-                } else {
-                    return null;
+                    break;
+                } catch(JSONException je){
+                    // do nothing
                 }
             }
-            // control shouldn't reach here .. it shouldve thrown exception before or returned
-            return "EMPTY";
-
+            if(responseSource == null) return Collections.nCopies(esOutputFields.length, "Error: No hits found");
+            for(String esOutputField: esOutputFields){
+                if(responseSource.has(esOutputField) && !responseSource.isNull(esOutputField)){
+                    outputValues.add(responseSource.get(esOutputField));
+                } else {
+                    outputValues.add(null);
+                }
+            }
+            return outputValues;
         }
 
-        List<Object> makeQueryForList(List<Object> inputValues){
-
+        List<List<Object>> makeQueryForList(List<Object> inputValues){
+            // Denormalizing List of Lists here
+            // [                        [
+            //   "abc",                   ["abc","123","xyz","hello"],
+            //   "123",            ==>    ["abc","123","pqr","world"]
+            //   ["xyz","pqr"],         ]
+            //   ["hello","world"]
+            // ]
             int arraySize = -1;
             for(Object v : inputValues){
                 if(v instanceof List){
@@ -189,8 +185,8 @@ public abstract class DynamicNewField<R extends ConnectRecord<R>> implements Tra
                     else if(arraySize != ((List<Object>)v).size()) throw new DataException("Irregular Array List Sizes");
                 }
             }
-            List<Object> input = new ArrayList<Object>();
-            List<Object> output = new ArrayList<Object>();
+            List<Object> input = new ArrayList<>();
+            List<List<Object>> output = new ArrayList<>();
 
             for(int j = 0; j < arraySize; j++){
                 List<Object> list = new ArrayList<Object>();
@@ -213,62 +209,19 @@ public abstract class DynamicNewField<R extends ConnectRecord<R>> implements Tra
 
             return output;
         }
-        // Object makeQuery(List<Object> inputValues){
-        //     if(inputValues.size()!=inputFields.length){
-        //         return "Cant get all values for the mentioned " + INPUT_FIELDS_CONFIG + ". Given " + INPUT_FIELDS_CONFIG + " : " + inputFields;
-        //     }
-        //     else if(inputValues.size()==0){
-        //         return null;
-        //     }
-        //     // todo
-        //     SearchRequest searchRequest = new SearchRequest();
-        //     searchRequest.indices(esIndex);
-        //     SearchSourceBuilder sourceBuilder = new SearchSourceBuilder();
-        //     BoolQueryBuilder boolQueryBuilder = QueryBuilders.boolQuery();
-        //     for(int i=0; i<inputFields.length; i++){
-        //         boolQueryBuilder.must(QueryBuilders.termQuery(esInputFields[i], inputValues.get(i)));
-        //     }
-        //     sourceBuilder.query(boolQueryBuilder);
-        //     searchRequest.source(sourceBuilder);
-        //
-        //     SearchResponse searchResponse;
-        //     final int MAX_RETRIES = 5;
-        //     for(int i=1; i <= MAX_RETRIES; i++){
-        //         try{
-        //             searchResponse = esClient.search(searchRequest, RequestOptions.DEFAULT);
-        //         }
-        //         catch(Exception e){
-        //             if(i==MAX_RETRIES) return "Error occured while making the query : " + e.getMessage();
-        //             else continue;
-        //         }
-        //
-        //         // get the top hit .. error handling not done properly
-        //         try{
-        //             SearchHit[] hits = searchResponse.getHits().getHits();
-        //             return hits[0].getSourceAsMap().get(esOutputField);
-        //         }
-        //         catch(Exception e){
-        //             if(i==MAX_RETRIES) return "Error occured after querying, while getting the new field : " + e.getMessage();
-        //             else continue;
-        //         }
-        //     }
-        //     // control shouldn't reach here .. it shouldve thrown exception before or returned
-        //     return "EMPTY";
-        // }
 
         @Override
-        Object make(Object input){
+        List<Object> make(Object input){
             return this.makeQuery((List<Object>)input);
         }
 
         @Override
-        List<Object> makeList(Object input){
+        List<List<Object>> makeList(Object input){
             return this.makeQueryForList((List<Object>)input);
         }
 
         @Override
         void close(){
-            // try{ esClient.close(); }catch(Exception e){}
             try{hClient.close();}catch(Exception e){}
         }
 
@@ -279,14 +232,14 @@ public abstract class DynamicNewField<R extends ConnectRecord<R>> implements Tra
 
     // Base Config
     public static final String INPUT_FIELDS_CONFIG = "input.fields";
-    public static final String OUTPUT_FIELD_CONFIG = "output.field";
+    public static final String OUTPUT_FIELDS_CONFIG = "output.fields";
     public static final String DEFAULT_VALUE_CONFIG = "input.default.values";
 
     // Elasticsearch Specific Config
     public static final String ES_URL_CONFIG = "es.url";
     public static final String ES_INDEX_CONFIG = "es.index";
     public static final String ES_INPUT_FIELDS_CONFIG = "es.input.fields";
-    public static final String ES_OUTPUT_FIELD_CONFIG = "es.output.field";
+    public static final String ES_OUTPUT_FIELDS_CONFIG = "es.output.fields";
     public static final String ES_INPUT_QUERY_ADD_KEYWORD = "es.input.query.add.keyword";
     public static final String ES_SECURITY_ENABLED_CONFIG = "es.security.enabled";
     public static final String ES_USERNAME_CONFIG = "es.username";
@@ -298,14 +251,14 @@ public abstract class DynamicNewField<R extends ConnectRecord<R>> implements Tra
     public static ConfigDef CONFIG_DEF = new ConfigDef()
         .define(TYPE_CONFIG, ConfigDef.Type.STRING, "es", ConfigDef.Importance.HIGH, "This is the type of query made. For now this field is ignored and defaulted to es")
         .define(INPUT_FIELDS_CONFIG, ConfigDef.Type.STRING, "", ConfigDef.Importance.HIGH, "Name of the field in the current index")
-        .define(OUTPUT_FIELD_CONFIG, ConfigDef.Type.STRING, "", ConfigDef.Importance.HIGH, "Name to give to the new field")
+        .define(OUTPUT_FIELDS_CONFIG, ConfigDef.Type.STRING, "", ConfigDef.Importance.HIGH, "Names to give to the new fields")
         .define(DEFAULT_VALUE_CONFIG, ConfigDef.Type.STRING, "", ConfigDef.Importance.HIGH, "Default vlaues for input fields")
 
         .define(ES_URL_CONFIG, ConfigDef.Type.STRING, "", ConfigDef.Importance.HIGH, "Installed Elasticsearch URL")
         .define(ES_INDEX_CONFIG, ConfigDef.Type.STRING, "", ConfigDef.Importance.HIGH, "Name of the index in ES to search")
         .define(ES_INPUT_FIELDS_CONFIG, ConfigDef.Type.STRING, "", ConfigDef.Importance.HIGH, "ES documents with given input field will be searched for. This field tells the key name")
-        .define(ES_OUTPUT_FIELD_CONFIG, ConfigDef.Type.STRING, "", ConfigDef.Importance.HIGH, "If a successful match is made with the above input field+value, the value of this output field from the same document will be returned")
-        .define(ES_INPUT_QUERY_ADD_KEYWORD, ConfigDef.Type.STRING, "true", ConfigDef.Importance.HIGH, "Should add the .keyword suffix while querying ES?")
+        .define(ES_OUTPUT_FIELDS_CONFIG, ConfigDef.Type.STRING, "", ConfigDef.Importance.HIGH, "If a successful match is made with the above input field+value, the values of this output fields from the same document will be returned")
+        .define(ES_INPUT_QUERY_ADD_KEYWORD, ConfigDef.Type.STRING, "false", ConfigDef.Importance.HIGH, "Should add the .keyword suffix while querying ES?")
 
         .define(ES_SECURITY_ENABLED_CONFIG, ConfigDef.Type.STRING, "", ConfigDef.Importance.HIGH, "Is Elasticsearch security enabled?")
         .define(ES_USERNAME_CONFIG, ConfigDef.Type.STRING, "", ConfigDef.Importance.HIGH, "Elasticsearch Username")
@@ -321,15 +274,18 @@ public abstract class DynamicNewField<R extends ConnectRecord<R>> implements Tra
         String type = absconf.getString(TYPE_CONFIG);
 
         String inputFieldBulk = absconf.getString(INPUT_FIELDS_CONFIG);
-        String outputField = absconf.getString(OUTPUT_FIELD_CONFIG);
+        String outputFieldBulk = absconf.getString(OUTPUT_FIELDS_CONFIG);
         String inputDefaultValuesBulk = absconf.getString(DEFAULT_VALUE_CONFIG);
 
-        if (type.isEmpty() || inputFieldBulk.isEmpty() || outputField.isEmpty() || inputDefaultValuesBulk.isEmpty()) {
-            throw new ConfigException("One of required transform base config fields not set. Required base fields in tranform: " + TYPE_CONFIG + " ," + INPUT_FIELDS_CONFIG + " ," + OUTPUT_FIELD_CONFIG + " ," + DEFAULT_VALUE_CONFIG);
+        if (type.isEmpty() || inputFieldBulk.isEmpty() || outputFieldBulk.isEmpty()) {
+            throw new ConfigException("One of required transform base config fields not set. Required base fields in tranform: " + TYPE_CONFIG + " ," + INPUT_FIELDS_CONFIG + " ," + OUTPUT_FIELDS_CONFIG);
         }
 
         String[] inputFields = inputFieldBulk.replaceAll("\\s+","").split(",");
-        String[] inputDefaultValues = inputDefaultValuesBulk.replaceAll("\\s+","").split(",");
+        String[] outputFields = outputFieldBulk.replaceAll("\\s+","").split(",");
+        String[] inputDefaultValuesInput = inputDefaultValuesBulk.replaceAll("\\s+","").split(",");
+        String[] inputDefaultValues = new String[inputFields.length];
+        System.arraycopy(inputDefaultValuesInput, 0, inputDefaultValues, 0, inputDefaultValuesInput.length);
 
         if(type.equals("es")){
             String esUrl = absconf.getString(ES_URL_CONFIG);
@@ -338,29 +294,30 @@ public abstract class DynamicNewField<R extends ConnectRecord<R>> implements Tra
             String esUsername = absconf.getString(ES_USERNAME_CONFIG);
             String esPassword = absconf.getString(ES_PASSWORD_CONFIG);
             String esInputFieldBulk = absconf.getString(ES_INPUT_FIELDS_CONFIG);
-            String esOutputField = absconf.getString(ES_OUTPUT_FIELD_CONFIG);
+            String esOutputFieldBulk = absconf.getString(ES_OUTPUT_FIELDS_CONFIG);
             String esInputQueryAddKeyword = absconf.getString(ES_INPUT_QUERY_ADD_KEYWORD);
 
-            if(esUrl.isEmpty() || esIndex.isEmpty() || esInputFieldBulk.isEmpty() || esOutputField.isEmpty()){
-                throw new ConfigException("One of required transform Elasticsearch config fields not set. Required Elasticsearch fields in tranform: " + ES_URL_CONFIG + " ," + ES_INDEX_CONFIG + " ," + ES_INPUT_FIELDS_CONFIG + " ," + ES_OUTPUT_FIELD_CONFIG);
+            if(esUrl.isEmpty() || esIndex.isEmpty() || esInputFieldBulk.isEmpty() || esOutputFieldBulk.isEmpty()){
+                throw new ConfigException("One of required transform Elasticsearch config fields not set. Required Elasticsearch fields in tranform: " + ES_URL_CONFIG + " ," + ES_INDEX_CONFIG + " ," + ES_INPUT_FIELDS_CONFIG + " ," + ES_OUTPUT_FIELDS_CONFIG);
             }
 
             String[] esInputFields = esInputFieldBulk.replaceAll("\\s+","").split(",");
+            String[] esOutputFields = esOutputFieldBulk.replaceAll("\\s+","").split(",");
 
-            if(inputFields.length != esInputFields.length || inputFields.length != inputDefaultValues.length){
-                throw new ConfigException("No of " + INPUT_FIELDS_CONFIG + " and no of " + ES_INPUT_FIELDS_CONFIG + "and number of " + DEFAULT_VALUE_CONFIG + " doesnt match. Given " + INPUT_FIELDS_CONFIG + ": " + inputFieldBulk + ". Given " + ES_INPUT_FIELDS_CONFIG + ": " + esInputFieldBulk + ". Given " + DEFAULT_VALUE_CONFIG + ": " + inputDefaultValuesBulk);
+            if(inputFields.length != esInputFields.length){
+                throw new ConfigException("No of " + INPUT_FIELDS_CONFIG + " and no of " + ES_INPUT_FIELDS_CONFIG + " doesnt match. Given " + INPUT_FIELDS_CONFIG + ": " + inputFieldBulk + ". Given " + ES_INPUT_FIELDS_CONFIG + ": " + esInputFieldBulk);
             }
 
             try{
                 config = new ESQueryConfig(
                     type,
                     inputFields,
-                    outputField,
+                    outputFields,
                     inputDefaultValues,
                     esUrl,
                     esIndex,
                     esInputFields,
-                    esOutputField,
+                    esOutputFields,
                     esInputQueryAddKeyword,
                     esSecurity,
                     esUsername,
@@ -372,103 +329,45 @@ public abstract class DynamicNewField<R extends ConnectRecord<R>> implements Tra
             }
         }
         else{
-            throw new ConfigException("Unknown Type : " + type + ". Available types now: \"es\"" );
+            throw new ConfigException("Unknown Type : " + type + ". Available types: \"es\"" );
         }
-    }
-
-    @Override
-    public ConfigDef config() {
-        return CONFIG_DEF;
     }
 
     @Override
     public void close() {
         schemaUpdateCache = null;
+        if(config != null) config.close();
     }
 
     @Override
-    public R apply(R record) {
-        if (operatingValue(record) == null) {
-            return record;
-        } else if (operatingSchema(record) == null) {
-            return applySchemaless(record);
-        } else {
-            return applyWithSchema(record);
-        }
-    }
-
-    protected abstract Schema operatingSchema(R record);
-
-    protected abstract Object operatingValue(R record);
-
-    protected abstract R newRecord(R record, Schema updatedSchema, Object updatedValue);
-
-    public static class Key<R extends ConnectRecord<R>> extends DynamicNewField<R> {
-        @Override
-        protected Schema operatingSchema(R record) {
-            return record.keySchema();
-        }
-
-        @Override
-        protected Object operatingValue(R record) {
-            return record.key();
-        }
-
-        @Override
-        protected R newRecord(R record, Schema updatedSchema, Object updatedValue) {
-            return record.newRecord(record.topic(), record.kafkaPartition(), updatedSchema, updatedValue, record.valueSchema(), record.value(), record.timestamp());
-        }
-    }
-
-    public static class Value<R extends ConnectRecord<R>> extends DynamicNewField<R> {
-        @Override
-        protected Schema operatingSchema(R record) {
-            return record.valueSchema();
-        }
-
-        @Override
-        protected Object operatingValue(R record) {
-            return record.value();
-        }
-
-        @Override
-        protected R newRecord(R record, Schema updatedSchema, Object updatedValue) {
-            return record.newRecord(record.topic(), record.kafkaPartition(), record.keySchema(), record.key(), updatedSchema, updatedValue, record.timestamp());
-        }
-    }
-
-
-    private R applySchemaless(R record) {
+    public R applySchemaless(R record) {
         final Map<String, Object> value = Requirements.requireMap(operatingValue(record), PURPOSE);
 
         final Map<String, Object> updatedValue = new HashMap<>(value);
 
         List<Object> valueList = new ArrayList<Object>();
-        boolean nullValues = false;
         boolean dealingWithList = false;
         for(int i = 0; i < config.inputFields.length; i++){
-            Object v = Requirements.getNestedField(value,config.inputFields[i]);
-            if(v!=null){
+            Object v = Requirements.getNestedField(value, config.inputFields[i]);
+            if(v != null && !(v instanceof String && ((String)v).isEmpty())){
                 valueList.add(v);
                 if(v instanceof List<?>) dealingWithList = true;
-            }
-            else{
-                if(!config.inputDefaultValues[i].equals("null")){
-                    valueList.add(config.inputDefaultValues[i]);
-                }
-                else{
-                    nullValues = true;
-                    break;
-                }
+            } else {
+                valueList.add(config.inputDefaultValues[i] != null && !config.inputDefaultValues[i].isEmpty() ? config.inputDefaultValues[i] : null);
             }
         }
-        if(!nullValues && !dealingWithList) updatedValue.put(config.outputField, config.make(valueList));
-        else if(!nullValues && dealingWithList) updatedValue.put(config.outputField, config.makeList(valueList));
+
+        Object output = dealingWithList ? config.makeList(valueList) : config.make(valueList);
+        List<Object> outputList = (List<Object>)output;
+        for(int i=0; i<config.outputFields.length; i++) {
+            updatedValue.put(config.outputFields[i], outputList.get(i));
+        }
 
         return newRecord(record, null, updatedValue);
     }
 
-    private R applyWithSchema(R record) {
+    @Override
+    public R applyWithSchema(R record) {
         final Struct value = Requirements.requireStruct(operatingValue(record), PURPOSE);
 
         Schema updatedSchema = schemaUpdateCache.get(value.schema());
@@ -484,27 +383,37 @@ public abstract class DynamicNewField<R extends ConnectRecord<R>> implements Tra
         }
 
         List<Object> valueList = new ArrayList<Object>();
-        for(String field : config.inputFields){
-            Object v = ((Object[])Requirements.getNestedField(value,field))[0];
-            // v is expected to be a string, case of List dealt in applySchemaless()
-            if(v!=null) valueList.add(v);
-
+        boolean dealingWithList = false;
+        for(int i = 0; i < config.inputFields.length; i++){
+            Object v = Requirements.getNestedField(value, config.inputFields[i])[0];
+            if(v != null && !(v instanceof String && ((String)v).isEmpty())){
+                valueList.add(v);
+                if(v instanceof List) dealingWithList = true;
+            } else {
+                valueList.add(config.inputDefaultValues[i] != null && !config.inputDefaultValues[i].isEmpty() ? config.inputDefaultValues[i] : null);
+            }
         }
-        updatedValue.put(config.outputField, config.make(valueList));
+
+        Object output = dealingWithList ? config.makeList(valueList) : config.make(valueList);
+        List<Object> outputList = (List<Object>)output;
+        for (int i=0; i<config.outputFields.length; i++){
+            updatedValue.put(config.outputFields[i], outputList.get(i));
+        }
 
         return newRecord(record, updatedSchema, updatedValue);
     }
-    private Schema makeUpdatedSchema(Schema schema) {
+
+    public Schema makeUpdatedSchema(Schema schema) {
         final SchemaBuilder builder = SchemaUtil.copySchemaBasics(schema, SchemaBuilder.struct());
 
         for (Field field : schema.fields()) {
             builder.field(field.name(), field.schema());
         }
 
-        builder.field(config.outputField, config.outputSchema);
+        for (String outputField: config.outputFields){
+            builder.field(outputField, config.outputSchema);
+        }
 
         return builder.build();
     }
-
-
 }
