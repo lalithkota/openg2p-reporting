@@ -1,0 +1,20 @@
+{
+    "name": "${DB_PREFIX_INDEX}_${DB_NAME}",
+    "config": {
+        "connector.class": "io.debezium.connector.postgresql.PostgresConnector",
+        "plugin.name": "pgoutput",
+        "publication.autocreate.mode": "filtered",
+        "slot.name": "dbz_${DB_PREFIX_INDEX}_${DB_NAME}",
+        "publication.name": "dbz_pub_${DB_PREFIX_INDEX}_${DB_NAME}",
+        "database.hostname": "${DB_HOSTNAME}",
+        "database.port": "${DB_PORT}",
+        "database.user": "${DB_USER}",
+        "database.password": "${DB_PASS}",
+        "database.dbname": "${DB_NAME}",
+        "topic.prefix": "${DB_PREFIX_INDEX}",
+        "table.include.list": "public.res_partner,public.g2p_crop,public.g2p_crop_information,public.g2p_land_information,",
+        "column.exclude.list": "",
+        "heartbeat.interval.ms": "${DEFAULT_DEBEZIUM_CONNECTOR_HEARTBEAT_MS}",
+        "decimal.handling.mode": "double"
+    }
+}
