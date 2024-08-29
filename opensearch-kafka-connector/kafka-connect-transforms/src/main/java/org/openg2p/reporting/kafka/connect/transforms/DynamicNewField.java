@@ -13,25 +13,30 @@ import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 
-import org.apache.hc.client5.http.auth.AuthScope;
-import org.apache.hc.client5.http.auth.CredentialsStore;
 import org.apache.hc.client5.http.classic.methods.HttpGet;
-import org.apache.hc.client5.http.auth.UsernamePasswordCredentials;
-import org.apache.hc.client5.http.impl.auth.BasicCredentialsProvider;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpResponse;
 import org.apache.hc.client5.http.impl.classic.HttpClientBuilder;
 import org.apache.hc.client5.http.impl.classic.HttpClients;
+import org.apache.hc.client5.http.impl.io.PoolingHttpClientConnectionManagerBuilder;
+import org.apache.hc.client5.http.ssl.NoopHostnameVerifier;
+import org.apache.hc.client5.http.ssl.SSLConnectionSocketFactoryBuilder;
+import org.apache.hc.client5.http.ssl.TrustAllStrategy;
 import org.apache.hc.core5.http.HttpEntity;
 import org.apache.hc.core5.http.io.entity.EntityUtils;
 import org.apache.hc.core5.http.io.entity.StringEntity;
+import org.apache.hc.core5.ssl.SSLContextBuilder;
 
 import org.json.JSONObject;
 import org.json.JSONException;
 
 import java.util.Arrays;
+import java.util.Base64;
 import java.util.Collections;
 import java.util.List;
+import java.security.NoSuchAlgorithmException;
+import java.security.KeyManagementException;
+import java.security.KeyStoreException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
@@ -99,13 +104,28 @@ public abstract class DynamicNewField<R extends ConnectRecord<R>> extends BaseTr
             // esClient = new RestHighLevelClient(RestClient.builder(HttpHost.create(this.esUrl)));
             HttpClientBuilder hClientBuilder = HttpClients.custom();
             if(esSecurity!=null && !esSecurity.isEmpty() && "true".equals(esSecurity)) {
-                CredentialsStore esCredStore = new BasicCredentialsProvider();
-                esCredStore.setCredentials(new AuthScope(null, -1), new UsernamePasswordCredentials(esUsername, esPassword.toCharArray()));
-                hClientBuilder.setDefaultCredentialsProvider(esCredStore);
+                try{
+                    hClientBuilder.setConnectionManager(
+                        PoolingHttpClientConnectionManagerBuilder.create().setSSLSocketFactory(
+                            SSLConnectionSocketFactoryBuilder.create().setSslContext(
+                                SSLContextBuilder.create().loadTrustMaterial(
+                                    TrustAllStrategy.INSTANCE
+                                ).build()
+                            ).setHostnameVerifier(
+                                NoopHostnameVerifier.INSTANCE
+                            ).build()
+                        ).build()
+                    );
+                } catch(NoSuchAlgorithmException | KeyManagementException | KeyStoreException e ){
+                    throw new ConfigException("Cannot Initialize ES Httpclient for security", e);
+                }
             }
             hClient = hClientBuilder.build();
             hGet = new HttpGet(this.esUrl+"/"+this.esIndex+"/_search");
             hGet.setHeader("Content-type", "application/json");
+            if(esSecurity!=null && !esSecurity.isEmpty() && "true".equals(esSecurity)) {
+                hGet.setHeader("Authorization", "Basic " + Base64.getEncoder().encodeToString((esUsername + ":" + esPassword).getBytes()));
+            }
         }
 
         List<Object> makeQuery(List<Object> inputValues){
