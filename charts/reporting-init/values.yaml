@@ -211,7 +211,7 @@ startUpCommand: |-
       debezium_connector_name=$(echo $debezium_connector_config | jq -cr '.name')
       debezium_new_connectors_list+=("$debezium_connector_name")
 
-      if_exists=$(contains $debezium_existing_connectors_list $debezium_connector_name)
+      if_exists=$(contains "$debezium_existing_connectors_list" "$debezium_connector_name")
       if [ -z "$if_exists" ]; then
         echo "==> Creating new Connector - $debezium_connector_name."
         curl -s -XPOST -H 'Content-Type: application/json' $DEBEZIUM_URL/connectors -d "$debezium_connector_config" | jq
@@ -223,7 +223,7 @@ startUpCommand: |-
     echo "==> Starting deletion process for old debezium connectors."
     debezium_new_connectors_list=${debezium_new_connectors_list[@]}
     for connector_to_delete in $debezium_existing_connectors_list; do
-      if_exists=$(contains $debezium_new_connectors_list $connector_to_delete)
+      if_exists=$(contains "$debezium_new_connectors_list" "$connector_to_delete")
       if [ -z "$if_exists" ]; then
         echo "==> Deleting old connector - $connector_to_delete."
         curl -s -XDELETE $DEBEZIUM_URL/connectors/${connector_to_delete} | jq
@@ -241,7 +241,7 @@ startUpCommand: |-
       os_connector_name=$(echo $os_connector_config | jq -cr '.name')
       os_new_connectors_list+=("$os_connector_name")
 
-      if_exists=$(contains $os_existing_connectors_list $os_connector_name)
+      if_exists=$(contains "$os_existing_connectors_list" "$os_connector_name")
       if [ -z "$if_exists" ]; then
         echo "==> Creating new Connector - $os_connector_name."
         curl -s -XPOST -H 'Content-Type: application/json' $OS_KAFKA_CONNECTOR_URL/connectors -d "$os_connector_config" | jq
@@ -253,7 +253,7 @@ startUpCommand: |-
     echo "==> Starting deletion process for old opensearch-connectors."
     os_new_connectors_list=${os_new_connectors_list[@]}
     for connector_to_delete in $os_existing_connectors_list; do
-      if_exists=$(contains $os_new_connectors_list $connector_to_delete)
+      if_exists=$(contains "$os_new_connectors_list" "$connector_to_delete")
       if [ -z "$if_exists" ]; then
         echo "==> Deleting old connector - $connector_to_delete."
         curl -s -XDELETE $OS_KAFKA_CONNECTOR_URL/connectors/${connector_to_delete} | jq
