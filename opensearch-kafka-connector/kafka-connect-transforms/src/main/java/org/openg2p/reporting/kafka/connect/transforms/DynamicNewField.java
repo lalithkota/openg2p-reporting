@@ -74,6 +74,7 @@ public abstract class DynamicNewField<R extends ConnectRecord<R>> extends BaseTr
         String[] esInputFields;
         String[] esOutputFields;
         String esInputQueryAddKeyword;
+        String esQuerySort;
 
         // RestHighLevelClient esClient;
         CloseableHttpClient hClient;
@@ -89,6 +90,7 @@ public abstract class DynamicNewField<R extends ConnectRecord<R>> extends BaseTr
             String[] esInputFields,
             String[] esOutputFields,
             String esInputQueryAddKeyword,
+            String esQuerySort,
             String esSecurity,
             String esUsername,
             String esPassword
@@ -99,6 +101,7 @@ public abstract class DynamicNewField<R extends ConnectRecord<R>> extends BaseTr
             this.esIndex=esIndex;
             this.esInputFields=esInputFields;
             this.esOutputFields=esOutputFields;
+            this.esQuerySort=esQuerySort;
             this.esInputQueryAddKeyword=esInputQueryAddKeyword;
 
             // esClient = new RestHighLevelClient(RestClient.builder(HttpHost.create(this.esUrl)));
@@ -152,7 +155,7 @@ public abstract class DynamicNewField<R extends ConnectRecord<R>> extends BaseTr
                 requestJson += (value instanceof Number || value instanceof Boolean) ? value : "\"" + value + "\"";
                 requestJson += "}}";
             }
-            requestJson += "]}}}";
+            requestJson += "]}}, \"sort\":" + esQuerySort + "}";
 
             hGet.setEntity(new StringEntity(requestJson));
 
@@ -261,6 +264,7 @@ public abstract class DynamicNewField<R extends ConnectRecord<R>> extends BaseTr
     public static final String ES_INPUT_FIELDS_CONFIG = "es.input.fields";
     public static final String ES_OUTPUT_FIELDS_CONFIG = "es.output.fields";
     public static final String ES_INPUT_QUERY_ADD_KEYWORD = "es.input.query.add.keyword";
+    public static final String ES_QUERY_SORT = "es.query.sort";
     public static final String ES_SECURITY_ENABLED_CONFIG = "es.security.enabled";
     public static final String ES_USERNAME_CONFIG = "es.username";
     public static final String ES_PASSWORD_CONFIG = "es.password";
@@ -279,6 +283,7 @@ public abstract class DynamicNewField<R extends ConnectRecord<R>> extends BaseTr
         .define(ES_INPUT_FIELDS_CONFIG, ConfigDef.Type.STRING, "", ConfigDef.Importance.HIGH, "ES documents with given input field will be searched for. This field tells the key name")
         .define(ES_OUTPUT_FIELDS_CONFIG, ConfigDef.Type.STRING, "", ConfigDef.Importance.HIGH, "If a successful match is made with the above input field+value, the values of this output fields from the same document will be returned")
         .define(ES_INPUT_QUERY_ADD_KEYWORD, ConfigDef.Type.STRING, "false", ConfigDef.Importance.HIGH, "Should add the .keyword suffix while querying ES?")
+        .define(ES_QUERY_SORT, ConfigDef.Type.STRING, "[{\"@timestamp_gen\": {\"order\": \"desc\"}}]", ConfigDef.Importance.HIGH, "This will be added under \"sort\" section in the ES Query.")
 
         .define(ES_SECURITY_ENABLED_CONFIG, ConfigDef.Type.STRING, "", ConfigDef.Importance.HIGH, "Is Elasticsearch security enabled?")
         .define(ES_USERNAME_CONFIG, ConfigDef.Type.STRING, "", ConfigDef.Importance.HIGH, "Elasticsearch Username")
@@ -316,6 +321,7 @@ public abstract class DynamicNewField<R extends ConnectRecord<R>> extends BaseTr
             String esInputFieldBulk = absconf.getString(ES_INPUT_FIELDS_CONFIG);
             String esOutputFieldBulk = absconf.getString(ES_OUTPUT_FIELDS_CONFIG);
             String esInputQueryAddKeyword = absconf.getString(ES_INPUT_QUERY_ADD_KEYWORD);
+            String esQuerySort = absconf.getString(ES_QUERY_SORT);
 
             if(esUrl.isEmpty() || esIndex.isEmpty() || esInputFieldBulk.isEmpty() || esOutputFieldBulk.isEmpty()){
                 throw new ConfigException("One of required transform Elasticsearch config fields not set. Required Elasticsearch fields in tranform: " + ES_URL_CONFIG + " ," + ES_INDEX_CONFIG + " ," + ES_INPUT_FIELDS_CONFIG + " ," + ES_OUTPUT_FIELDS_CONFIG);
@@ -339,6 +345,7 @@ public abstract class DynamicNewField<R extends ConnectRecord<R>> extends BaseTr
                     esInputFields,
                     esOutputFields,
                     esInputQueryAddKeyword,
+                    esQuerySort,
                     esSecurity,
                     esUsername,
                     esPassword
