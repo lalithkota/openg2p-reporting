@@ -211,6 +211,9 @@ startUpCommand: |-
       debezium_connector_name=$(echo $debezium_connector_config | jq -cr '.name')
       debezium_new_connectors_list+=("$debezium_connector_name")
 
+      debez_wait_secs=$(echo $debezium_connector_config | jq -cr '.wait_after_init_secs // empty')
+      debezium_connector_config=$(echo $debezium_connector_config | jq -cr 'del(.wait_after_init_secs)')
+
       if_exists=$(contains "$debezium_existing_connectors_list" "$debezium_connector_name")
       if [ -z "$if_exists" ]; then
         echo "==> Creating new Connector - $debezium_connector_name."
@@ -218,6 +221,9 @@ startUpCommand: |-
       else
         echo "==> Connector - $debezium_connector_name - already exists. Updating config."
         curl -s -XPUT -H 'Content-Type: application/json' $DEBEZIUM_URL/connectors/${debezium_connector_name}/config -d "$(echo $debezium_connector_config | jq -cr '.config')" | jq
+      fi
+      if [ -n "$debez_wait_secs" ]; then
+        sleep $debez_wait_secs
       fi
     done
     echo "==> Starting deletion process for old debezium connectors."
@@ -241,6 +247,9 @@ startUpCommand: |-
       os_connector_name=$(echo $os_connector_config | jq -cr '.name')
       os_new_connectors_list+=("$os_connector_name")
 
+      os_wait_secs=$(echo $os_connector_config | jq -cr '.wait_after_init_secs // empty')
+      os_connector_config=$(echo $os_connector_config | jq -cr 'del(.wait_after_init_secs)')
+
       if_exists=$(contains "$os_existing_connectors_list" "$os_connector_name")
       if [ -z "$if_exists" ]; then
         echo "==> Creating new Connector - $os_connector_name."
@@ -248,6 +257,9 @@ startUpCommand: |-
       else
         echo "==> Connector - $os_connector_name - already exists. Updating config."
         curl -s -XPUT -H 'Content-Type: application/json' $OS_KAFKA_CONNECTOR_URL/connectors/${os_connector_name}/config -d "$(echo $os_connector_config | jq -cr '.config')" | jq
+      fi
+      if [ -n "$os_wait_secs" ]; then
+        sleep $os_wait_secs
       fi
     done
     echo "==> Starting deletion process for old opensearch-connectors."
