@@ -183,13 +183,11 @@ public abstract class TimestampConverterAdv<R extends ConnectRecord<R>> extends 
         }
 
         String output;
-        long tsLong;
+        long tsLong = ((Number)timestamp).longValue();;
 
         if(inType == Config.InputType.milli_sec){
-            tsLong = (long)timestamp;
             output = format.format(new Date(tsLong));
         } else if(inType == Config.InputType.micro_sec){
-            tsLong = (long)timestamp;
             output = format.format(new Date(tsLong/1000));
             // // the following is if there are more micro digits... right now ignoring
             // if((tsLong%1000) != 0) {
@@ -198,7 +196,6 @@ public abstract class TimestampConverterAdv<R extends ConnectRecord<R>> extends 
             //     output += "Z";
             // }
         } else if(inType == Config.InputType.days_epoch){
-            tsLong = (int)timestamp;
             output = format.format(new Date(tsLong*24*60*60*1000));
         } else{
             // it should never come here

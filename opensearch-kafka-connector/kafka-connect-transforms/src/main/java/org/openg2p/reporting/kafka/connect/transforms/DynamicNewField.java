@@ -13,25 +13,30 @@ import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 
-import org.apache.hc.client5.http.auth.AuthScope;
-import org.apache.hc.client5.http.auth.CredentialsStore;
 import org.apache.hc.client5.http.classic.methods.HttpGet;
-import org.apache.hc.client5.http.auth.UsernamePasswordCredentials;
-import org.apache.hc.client5.http.impl.auth.BasicCredentialsProvider;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpResponse;
 import org.apache.hc.client5.http.impl.classic.HttpClientBuilder;
 import org.apache.hc.client5.http.impl.classic.HttpClients;
+import org.apache.hc.client5.http.impl.io.PoolingHttpClientConnectionManagerBuilder;
+import org.apache.hc.client5.http.ssl.NoopHostnameVerifier;
+import org.apache.hc.client5.http.ssl.SSLConnectionSocketFactoryBuilder;
+import org.apache.hc.client5.http.ssl.TrustAllStrategy;
 import org.apache.hc.core5.http.HttpEntity;
 import org.apache.hc.core5.http.io.entity.EntityUtils;
 import org.apache.hc.core5.http.io.entity.StringEntity;
+import org.apache.hc.core5.ssl.SSLContextBuilder;
 
 import org.json.JSONObject;
 import org.json.JSONException;
 
 import java.util.Arrays;
+import java.util.Base64;
 import java.util.Collections;
 import java.util.List;
+import java.security.NoSuchAlgorithmException;
+import java.security.KeyManagementException;
+import java.security.KeyStoreException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
@@ -69,6 +74,7 @@ public abstract class DynamicNewField<R extends ConnectRecord<R>> extends BaseTr
         String[] esInputFields;
         String[] esOutputFields;
         String esInputQueryAddKeyword;
+        String esQuerySort;
 
         // RestHighLevelClient esClient;
         CloseableHttpClient hClient;
@@ -84,6 +90,7 @@ public abstract class DynamicNewField<R extends ConnectRecord<R>> extends BaseTr
             String[] esInputFields,
             String[] esOutputFields,
             String esInputQueryAddKeyword,
+            String esQuerySort,
             String esSecurity,
             String esUsername,
             String esPassword
@@ -94,18 +101,34 @@ public abstract class DynamicNewField<R extends ConnectRecord<R>> extends BaseTr
             this.esIndex=esIndex;
             this.esInputFields=esInputFields;
             this.esOutputFields=esOutputFields;
+            this.esQuerySort=esQuerySort;
             this.esInputQueryAddKeyword=esInputQueryAddKeyword;
 
             // esClient = new RestHighLevelClient(RestClient.builder(HttpHost.create(this.esUrl)));
             HttpClientBuilder hClientBuilder = HttpClients.custom();
             if(esSecurity!=null && !esSecurity.isEmpty() && "true".equals(esSecurity)) {
-                CredentialsStore esCredStore = new BasicCredentialsProvider();
-                esCredStore.setCredentials(new AuthScope(null, -1), new UsernamePasswordCredentials(esUsername, esPassword.toCharArray()));
-                hClientBuilder.setDefaultCredentialsProvider(esCredStore);
+                try{
+                    hClientBuilder.setConnectionManager(
+                        PoolingHttpClientConnectionManagerBuilder.create().setSSLSocketFactory(
+                            SSLConnectionSocketFactoryBuilder.create().setSslContext(
+                                SSLContextBuilder.create().loadTrustMaterial(
+                                    TrustAllStrategy.INSTANCE
+                                ).build()
+                            ).setHostnameVerifier(
+                                NoopHostnameVerifier.INSTANCE
+                            ).build()
+                        ).build()
+                    );
+                } catch(NoSuchAlgorithmException | KeyManagementException | KeyStoreException e ){
+                    throw new ConfigException("Cannot Initialize ES Httpclient for security", e);
+                }
             }
             hClient = hClientBuilder.build();
             hGet = new HttpGet(this.esUrl+"/"+this.esIndex+"/_search");
             hGet.setHeader("Content-type", "application/json");
+            if(esSecurity!=null && !esSecurity.isEmpty() && "true".equals(esSecurity)) {
+                hGet.setHeader("Authorization", "Basic " + Base64.getEncoder().encodeToString((esUsername + ":" + esPassword).getBytes()));
+            }
         }
 
         List<Object> makeQuery(List<Object> inputValues){
@@ -132,7 +155,7 @@ public abstract class DynamicNewField<R extends ConnectRecord<R>> extends BaseTr
                 requestJson += (value instanceof Number || value instanceof Boolean) ? value : "\"" + value + "\"";
                 requestJson += "}}";
             }
-            requestJson += "]}}}";
+            requestJson += "]}}, \"sort\":" + esQuerySort + "}";
 
             hGet.setEntity(new StringEntity(requestJson));
 
@@ -241,6 +264,7 @@ public abstract class DynamicNewField<R extends ConnectRecord<R>> extends BaseTr
     public static final String ES_INPUT_FIELDS_CONFIG = "es.input.fields";
     public static final String ES_OUTPUT_FIELDS_CONFIG = "es.output.fields";
     public static final String ES_INPUT_QUERY_ADD_KEYWORD = "es.input.query.add.keyword";
+    public static final String ES_QUERY_SORT = "es.query.sort";
     public static final String ES_SECURITY_ENABLED_CONFIG = "es.security.enabled";
     public static final String ES_USERNAME_CONFIG = "es.username";
     public static final String ES_PASSWORD_CONFIG = "es.password";
@@ -259,6 +283,7 @@ public abstract class DynamicNewField<R extends ConnectRecord<R>> extends BaseTr
         .define(ES_INPUT_FIELDS_CONFIG, ConfigDef.Type.STRING, "", ConfigDef.Importance.HIGH, "ES documents with given input field will be searched for. This field tells the key name")
         .define(ES_OUTPUT_FIELDS_CONFIG, ConfigDef.Type.STRING, "", ConfigDef.Importance.HIGH, "If a successful match is made with the above input field+value, the values of this output fields from the same document will be returned")
         .define(ES_INPUT_QUERY_ADD_KEYWORD, ConfigDef.Type.STRING, "false", ConfigDef.Importance.HIGH, "Should add the .keyword suffix while querying ES?")
+        .define(ES_QUERY_SORT, ConfigDef.Type.STRING, "[{\"@timestamp_gen\": {\"order\": \"desc\"}}]", ConfigDef.Importance.HIGH, "This will be added under \"sort\" section in the ES Query.")
 
         .define(ES_SECURITY_ENABLED_CONFIG, ConfigDef.Type.STRING, "", ConfigDef.Importance.HIGH, "Is Elasticsearch security enabled?")
         .define(ES_USERNAME_CONFIG, ConfigDef.Type.STRING, "", ConfigDef.Importance.HIGH, "Elasticsearch Username")
@@ -296,6 +321,7 @@ public abstract class DynamicNewField<R extends ConnectRecord<R>> extends BaseTr
             String esInputFieldBulk = absconf.getString(ES_INPUT_FIELDS_CONFIG);
             String esOutputFieldBulk = absconf.getString(ES_OUTPUT_FIELDS_CONFIG);
             String esInputQueryAddKeyword = absconf.getString(ES_INPUT_QUERY_ADD_KEYWORD);
+            String esQuerySort = absconf.getString(ES_QUERY_SORT);
 
             if(esUrl.isEmpty() || esIndex.isEmpty() || esInputFieldBulk.isEmpty() || esOutputFieldBulk.isEmpty()){
                 throw new ConfigException("One of required transform Elasticsearch config fields not set. Required Elasticsearch fields in tranform: " + ES_URL_CONFIG + " ," + ES_INDEX_CONFIG + " ," + ES_INPUT_FIELDS_CONFIG + " ," + ES_OUTPUT_FIELDS_CONFIG);
@@ -319,6 +345,7 @@ public abstract class DynamicNewField<R extends ConnectRecord<R>> extends BaseTr
                     esInputFields,
                     esOutputFields,
                     esInputQueryAddKeyword,
+                    esQuerySort,
                     esSecurity,
                     esUsername,
                     esPassword
