@@ -3,15 +3,19 @@ package org.openg2p.reporting.kafka.connect.transforms;
 import org.apache.kafka.common.cache.Cache;
 import org.apache.kafka.common.cache.LRUCache;
 import org.apache.kafka.common.cache.SynchronizedCache;
-import org.apache.kafka.connect.connector.ConnectRecord;
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.common.config.AbstractConfig;
 import org.apache.kafka.common.config.ConfigException;
+import org.apache.kafka.connect.connector.ConnectRecord;
 import org.apache.kafka.connect.errors.DataException;
 import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
+import org.apache.kafka.connect.transforms.field.FieldSyntaxVersion;
+import org.apache.kafka.connect.transforms.field.SingleFieldPath;
+import org.apache.kafka.connect.transforms.util.Requirements;
+import org.apache.kafka.connect.transforms.util.SchemaUtil;
 
 import org.apache.hc.client5.http.classic.methods.HttpGet;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
@@ -48,6 +52,7 @@ public abstract class DynamicNewField<R extends ConnectRecord<R>> extends BaseTr
     public abstract class Config{
         String type;
         String[] inputFields;
+        SingleFieldPath[] inputFieldPaths;
         String[] inputDefaultValues;
         String[] outputFields;
         Schema outputSchema;
@@ -57,6 +62,10 @@ public abstract class DynamicNewField<R extends ConnectRecord<R>> extends BaseTr
             this.inputDefaultValues = inputDefaultValues;
             this.outputFields = outputFields;
             this.outputSchema = outputSchema;
+            this.inputFieldPaths = new SingleFieldPath[inputFields.length];
+            for(int i=0;i < inputFields.length; i++) {
+                this.inputFieldPaths[i] = new SingleFieldPath(inputFields[i], FieldSyntaxVersion.V2);
+            }
         }
         List<Object> make(Object input){
             return null;
@@ -375,7 +384,7 @@ public abstract class DynamicNewField<R extends ConnectRecord<R>> extends BaseTr
         List<Object> valueList = new ArrayList<Object>();
         boolean dealingWithList = false;
         for(int i = 0; i < config.inputFields.length; i++){
-            Object v = Requirements.getNestedField(value, config.inputFields[i]);
+            Object v = config.inputFieldPaths[i].valueFrom(value);
             if(v != null && !(v instanceof String && ((String)v).isEmpty())){
                 valueList.add(v);
                 if(v instanceof List<?>) dealingWithList = true;
@@ -412,7 +421,7 @@ public abstract class DynamicNewField<R extends ConnectRecord<R>> extends BaseTr
         List<Object> valueList = new ArrayList<Object>();
         boolean dealingWithList = false;
         for(int i = 0; i < config.inputFields.length; i++){
-            Object v = Requirements.getNestedField(value, config.inputFields[i])[0];
+            Object v = config.inputFieldPaths[i].valueFrom(value);
             if(v != null && !(v instanceof String && ((String)v).isEmpty())){
                 valueList.add(v);
                 if(v instanceof List) dealingWithList = true;
