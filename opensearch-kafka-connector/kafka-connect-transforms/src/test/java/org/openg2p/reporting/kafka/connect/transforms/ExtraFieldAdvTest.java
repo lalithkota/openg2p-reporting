@@ -1,19 +1,20 @@
 package org.openg2p.reporting.kafka.connect.transforms;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 import org.apache.kafka.connect.data.SchemaAndValue;
+import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.DataException;
 import org.apache.kafka.connect.json.JsonConverter;
 import org.apache.kafka.connect.source.SourceRecord;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 
 public class ExtraFieldAdvTest {
     private final ExtractFieldAdv<SourceRecord> extractNewFieldAdvTransform = new ExtractFieldAdv.Value<>();
@@ -29,16 +30,16 @@ public class ExtraFieldAdvTest {
     public void testSimpleExtractSchemaless() {
         Map<String, String> config = new HashMap<>();
         config.put(ExtractFieldAdv.FIELD_CONFIG, "after");
-        
+
         extractNewFieldAdvTransform.configure(config);
-        
+
         Map<String, String> jsonConverterConfig = new HashMap<>();
         jsonConverterConfig.put("schemas.enable", "false");
         jsonConverterConfig.put("converter.type", "value");
         jsonConverter.configure(jsonConverterConfig);
 
         SchemaAndValue original = jsonConverter.toConnectData(
-            "topic", 
+            "topic",
             "{\"after\":{\"finalize\":123,\"ok_value\":\"abcd\"}}".getBytes()
         );
 
@@ -179,45 +180,156 @@ public class ExtraFieldAdvTest {
         jsonConverterConfig.put("converter.type", "value");
         jsonConverter.configure(jsonConverterConfig);
 
-        // TODO: Restructure
-        // SchemaAndValue original = jsonConverter.toConnectData(
-        //     "topic",
-        //     ("{" +
-        //     "    \"after\": {" +
-        //     "        \"finalize\": {" +
-        //     "            \"test2\":\"val2\"," +
-        //     "            \"preamble\":null," +
-        //     "            \"array\":[\"list2\"]" +
-        //     "        }" +
-        //     "    }," +
-        //     "    \"source\": {" +
-        //     "        \"finalize\":{" +
-        //     "            \"test1\":\"val1\"," +
-        //     "            \"preamble\":\"fine\"," +
-        //     "            \"array\":[\"list1\"]" +
-        //     "        }" +
-        //     "    }," +
-        //     "    \"report\": {" +
-        //     "        \"finalize\":{" +
-        //     "            \"test3\":\"val3\"," +
-        //     "            \"test2\":\"present\"," +
-        //     "            \"array\":[\"list3\"]" +
-        //     "        }" +
-        //     "    }" +
-        //     "}").getBytes()
-        // );
+        SchemaAndValue original = jsonConverter.toConnectData(
+            "topic",
+            ("{" +
+            "    \"schema\": {" +
+            "        \"name\": \"MySchema\"," +
+            "        \"type\": \"struct\"," +
+            "        \"version\": 1," +
+            "        \"optional\": false," +
+            "        \"fields\": [" +
+            "            {" +
+            "                \"field\": \"after\"," +
+            "                \"type\": \"struct\"," +
+            "                \"name\": \"MySchemaAfter\"," +
+            "                \"optional\": false," +
+            "                \"fields\": [" +
+            "                    {" +
+            "                        \"field\": \"finalize\"," +
+            "                        \"type\": \"struct\"," +
+            "                        \"name\": \"MySchemaAfterFinalize\"," +
+            "                        \"optional\": false," +
+            "                        \"fields\": [" +
+            "                            {" +
+            "                                \"field\": \"test2\"," +
+            "                                \"type\": \"string\"," +
+            "                                \"optional\": true" +
+            "                            }," +
+            "                            {" +
+            "                                \"field\": \"preamble\"," +
+            "                                \"type\": \"string\"," +
+            "                                \"optional\": true" +
+            "                            }," +
+            "                            {" +
+            "                                \"field\": \"array\"," +
+            "                                \"type\": \"array\"," +
+            "                                \"optional\": true," +
+            "                                \"items\": {" +
+            "                                    \"type\": \"string\"" +
+            "                                }" +
+            "                            }" +
+            "                        ]" +
+            "                    }" +
+            "                ]" +
+            "            }," +
+            "            {" +
+            "                \"field\": \"source\"," +
+            "                \"type\": \"struct\"," +
+            "                \"name\": \"MySchemaSource\"," +
+            "                \"optional\": false," +
+            "                \"fields\": [" +
+            "                    {" +
+            "                        \"field\": \"finalize\"," +
+            "                        \"type\": \"struct\"," +
+            "                        \"name\": \"MySchemaSourceFinalize\"," +
+            "                        \"optional\": true," +
+            "                        \"fields\": [" +
+            "                            {" +
+            "                                \"field\": \"test1\"," +
+            "                                \"type\": \"string\"," +
+            "                                \"optional\": true" +
+            "                            }," +
+            "                            {" +
+            "                                \"field\": \"preamble\"," +
+            "                                \"type\": \"string\"," +
+            "                                \"optional\": true" +
+            "                            }," +
+            "                            {" +
+            "                                \"field\": \"array\"," +
+            "                                \"type\": \"array\"," +
+            "                                \"optional\": true," +
+            "                                \"items\": {" +
+            "                                    \"type\": \"string\"" +
+            "                                }" +
+            "                            }" +
+            "                        ]" +
+            "                    }" +
+            "                ]" +
+            "            }," +
+            "            {" +
+            "                \"field\": \"report\"," +
+            "                \"type\": \"struct\"," +
+            "                \"name\": \"MySchemaReport\"," +
+            "                \"optional\": false," +
+            "                \"fields\": [" +
+            "                    {" +
+            "                        \"field\": \"finalize\"," +
+            "                        \"type\": \"struct\"," +
+            "                        \"name\": \"MySchemaReportFinalize\"," +
+            "                        \"optional\": true," +
+            "                        \"fields\": [" +
+            "                            {" +
+            "                                \"field\": \"test2\"," +
+            "                                \"type\": \"string\"," +
+            "                                \"optional\": true" +
+            "                            }," +
+            "                            {" +
+            "                                \"field\": \"test3\"," +
+            "                                \"type\": \"string\"," +
+            "                                \"optional\": true" +
+            "                            }," +
+            "                            {" +
+            "                                \"field\": \"array\"," +
+            "                                \"type\": \"array\"," +
+            "                                \"optional\": true," +
+            "                                \"items\": {" +
+            "                                    \"type\": \"string\"" +
+            "                                }" +
+            "                            }" +
+            "                        ]" +
+            "                    }" +
+            "                ]" +
+            "            }" +
+            "        ]" +
+            "    }," +
+            "    \"payload\": {" +
+            "        \"after\": {" +
+            "            \"finalize\": {" +
+            "                \"test2\": \"val2\"," +
+            "                \"preamble\": null," +
+            "                \"array\": [\"list2\"]" +
+            "            }" +
+            "        }," +
+            "        \"source\": {" +
+            "            \"finalize\": {" +
+            "                \"test1\": \"val1\"," +
+            "                \"preamble\": \"fine\"," +
+            "                \"array\": [\"list1\"]" +
+            "            }" +
+            "        }," +
+            "        \"report\": {" +
+            "            \"finalize\": {" +
+            "                \"test3\": \"val3\"," +
+            "                \"test2\": \"present\"," +
+            "                \"array\": [\"list3\"]" +
+            "            }" +
+            "        }" +
+            "    }" +
+            "}").getBytes()
+        );
 
-        // SourceRecord transformed = extractNewFieldAdvTransform.apply(createTestRecord(original));
+        SourceRecord transformed = extractNewFieldAdvTransform.apply(createTestRecord(original));
 
-        // Map<String, Object> transformedFinalized = (Map<String, Object>)((Map<String, Object>)transformed.value()).get("finalize");
-        // List<String> transformedFinalizedArray = (List<String>)transformedFinalized.get("array");
-        // assertNull(transformedFinalized.get("preamble"));
-        // assertEquals("val1", transformedFinalized.get("test1"));
-        // assertEquals("present", transformedFinalized.get("test2"));
-        // assertEquals("val3", transformedFinalized.get("test3"));
-        // assertEquals("list1", transformedFinalizedArray.get(0));
-        // assertEquals("list2", transformedFinalizedArray.get(1));
-        // assertEquals("list3", transformedFinalizedArray.get(2));
+        Struct transformedFinalized = (Struct)((Struct)transformed.value()).get("finalize");
+        List<String> transformedFinalizedArray = (List<String>)transformedFinalized.get("array");
+        assertNull(transformedFinalized.get("preamble"));
+        assertEquals("val1", transformedFinalized.get("test1"));
+        assertEquals("present", transformedFinalized.get("test2"));
+        assertEquals("val3", transformedFinalized.get("test3"));
+        assertEquals("list1", transformedFinalizedArray.get(0));
+        assertEquals("list2", transformedFinalizedArray.get(1));
+        assertEquals("list3", transformedFinalizedArray.get(2));
     }
 
     private SourceRecord createTestRecord(SchemaAndValue schemaAndValue) {

@@ -43,22 +43,20 @@ public class StructMerger {
             if(struct1.schema().field(field.name()) != null) value1 = struct1.getWithoutDefault(field.name());
             if(struct2.schema().field(field.name()) != null) value2 = struct2.getWithoutDefault(field.name());
 
-            if (value2 != null) {
-                if (value1 == null) {
-                    mergedStruct.put(field, value2);
-                } else if (value1 instanceof Struct && value2 instanceof Struct && mapMergeStrategy == MapMergeStrategy.deep) {
+            if(struct2.schema().field(field.name()) == null) {
+                mergedStruct.put(field, value1);
+            } else {
+                if (value1 instanceof Struct && value2 instanceof Struct && mapMergeStrategy == MapMergeStrategy.deep) {
                     mergedStruct.put(field, mergeStructs((Struct) value1, (Struct) value2, mapMergeStrategy, arrMergeStrategy));
-                } else if (value1.getClass().isArray() && value1.getClass().equals(value2.getClass()) && arrMergeStrategy == ArrayMergeStrategy.concat) {
-                    mergedStruct.put(field, concatArrays(value1, value2, value2.getClass()));
                 } else if (value1 instanceof Map && value2 instanceof Map && mapMergeStrategy == MapMergeStrategy.deep) {
                     mergedStruct.put(field, mergeMaps((Map<String, Object>) value1, (Map<String, Object>) value2, mapMergeStrategy, arrMergeStrategy));
+                } else if (value1 != null && value2 != null && value1.getClass().isArray() && value2.getClass().isArray() && arrMergeStrategy == ArrayMergeStrategy.concat) {
+                    mergedStruct.put(field, concatArrays(value1, value2, value2.getClass()));
                 } else if (value1 instanceof List && value2 instanceof List && arrMergeStrategy == ArrayMergeStrategy.concat) {
                     mergedStruct.put(field, Stream.concat(((List)value1).stream(), ((List)value2).stream()).collect(Collectors.toList()));
                 } else {
                     mergedStruct.put(field, value2);
                 }
-            } else {
-                mergedStruct.put(field, value1);
             }
         }
 
@@ -85,7 +83,7 @@ public class StructMerger {
             } else {
                 if (value1 instanceof Map && value2 instanceof Map && mapMergeStrategy == MapMergeStrategy.deep) {
                     mergeMaps((Map<String, Object>)value1, (Map<String, Object>)value2, mapMergeStrategy, arrMergeStrategy);
-                } else if (value1.getClass().isArray() && value2.getClass().isArray() && arrMergeStrategy == ArrayMergeStrategy.concat) {
+                } else if (value1 != null && value2 != null && value1.getClass().isArray() && value2.getClass().isArray() && arrMergeStrategy == ArrayMergeStrategy.concat) {
                     map2.put(field, concatArrays(value1, value2, value1.getClass()));
                 } else if (value1 instanceof List && value2 instanceof List && arrMergeStrategy == ArrayMergeStrategy.concat) {
                     map2.put(field, Stream.concat(((List)value1).stream(), ((List)value2).stream()).collect(Collectors.toList()));
@@ -115,7 +113,9 @@ public class StructMerger {
         if (schema2 == null) return schema1;
         SchemaBuilder builder = SchemaUtil.copySchemaBasics(schema2);
         for (Field field: schema2.fields()) {
-            builder.field(field.name(), field.schema());
+            if (schema1.field(field.name()) == null) {
+                builder.field(field.name(), field.schema());
+            }
         }
         for (Field field: schema1.fields()){
             Field schema1Field = field;
@@ -126,6 +126,8 @@ public class StructMerger {
             } else {
                 if (schema1Field.schema().type() == Schema.Type.STRUCT && schema2Field.schema().type() == Schema.Type.STRUCT && mapMergeStrategy == MapMergeStrategy.deep) {
                     builder.field(field.name(), mergeSchemas(schema1Field.schema(), schema2Field.schema(), mapMergeStrategy, arrMergeStrategy));
+                } else {
+                    builder.field(field.name(), schema2Field.schema());
                 }
             }
         }
