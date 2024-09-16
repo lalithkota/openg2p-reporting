@@ -16,5 +16,6 @@
         "column.exclude.list": "",
         "heartbeat.interval.ms": "${DEFAULT_DEBEZIUM_CONNECTOR_HEARTBEAT_MS}",
         "decimal.handling.mode": "double"
-    }
+    },
+    "wait_after_init_secs": 20
 }

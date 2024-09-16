@@ -10,8 +10,8 @@ RUN cd /kafka-connect-transforms && \
     wget https://repo.maven.apache.org/maven2/io/debezium/debezium-api/${DEBEZIUM_VERSION}/debezium-api-${DEBEZIUM_VERSION}.jar
 
 
-FROM apache/kafka:3.7.0 AS runner
-ARG KAFKA_VERSION=3.7.0
+FROM apache/kafka:3.8.0 AS runner
+ARG KAFKA_VERSION=3.8.0
 
 WORKDIR /opt/kafka
 RUN mkdir connectors
