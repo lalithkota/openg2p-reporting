@@ -2,8 +2,8 @@ package org.openg2p.reporting.kafka.connect.transforms;
 
 import org.apache.kafka.common.config.ConfigDef;
 import org.apache.kafka.connect.connector.ConnectRecord;
-import org.apache.kafka.connect.data.Field;
 import org.apache.kafka.connect.data.Schema;
+import org.apache.kafka.connect.data.SchemaAndValue;
 import org.apache.kafka.connect.data.SchemaBuilder;
 import org.apache.kafka.connect.data.Struct;
 import org.apache.kafka.connect.errors.DataException;
@@ -16,12 +16,9 @@ import org.apache.kafka.connect.transforms.util.SimpleConfig;
 
 import java.util.AbstractMap;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 import org.openg2p.reporting.kafka.connect.transforms.util.StructMerger;
 
@@ -73,8 +70,8 @@ public abstract class ExtractFieldAdv<R extends ConnectRecord<R>> extends Extrac
             fieldPaths.add(
                 new AbstractMap.SimpleEntry<>(
                     // FieldSyntaxVersion.V2 is mandatory here.
-                    new SingleFieldPath(origPath.getValue(), FieldSyntaxVersion.V2),
-                    origPath.getKey()
+                    new SingleFieldPath(origPath.getKey(), FieldSyntaxVersion.V2),
+                    origPath.getValue()
                 )
             );
         }
@@ -112,12 +109,12 @@ public abstract class ExtractFieldAdv<R extends ConnectRecord<R>> extends Extrac
         Schema resSchema = null;
 
         for (Map.Entry<SingleFieldPath, String> fieldPath: fieldPaths){
-            Map.Entry<Object, Schema> toBeMerged = getStructOrObject(value, fieldPath.getKey(), fieldPath.getValue());
+            SchemaAndValue toBeMerged = getStructOrObject(value, fieldPath.getKey(), fieldPath.getValue());
             if (res == null){
-                res = toBeMerged.getKey();
-                resSchema = toBeMerged.getValue();
-            } else if (res instanceof Struct && toBeMerged instanceof Struct){
-                res = StructMerger.mergeStructs((Struct)res, (Struct)toBeMerged, mapMergeStrategy, arrMergeStrategy);
+                res = toBeMerged.value();
+                resSchema = toBeMerged.schema();
+            } else if (res instanceof Struct && toBeMerged.value() instanceof Struct){
+                res = StructMerger.mergeStructs((Struct)res, (Struct)toBeMerged.value(), mapMergeStrategy, arrMergeStrategy);
                 resSchema = ((Struct)res).schema();
             } else {
                 throw new DataException("ExtractNewFieldAdv: One of the structs trying to be merged is a primitive.");
@@ -136,7 +133,7 @@ public abstract class ExtractFieldAdv<R extends ConnectRecord<R>> extends Extrac
         }
     }
 
-    public Map.Entry<Object, Schema> getStructOrObject(Struct value, SingleFieldPath fieldPath, String renameField){
+    public SchemaAndValue getStructOrObject(Struct value, SingleFieldPath fieldPath, String renameField){
         Object res = fieldPath.valueFrom(value);
         Schema resSchema = fieldPath.fieldFrom(value.schema()).schema();
         if (renameField != null && !renameField.isEmpty()){
@@ -145,9 +142,9 @@ public abstract class ExtractFieldAdv<R extends ConnectRecord<R>> extends Extrac
             resSchema = builder.build();
             Struct resStruct = new Struct(resSchema);
             resStruct.put(renameField, res);
-            return new AbstractMap.SimpleEntry<>(resStruct, resSchema);
+            return new SchemaAndValue(resSchema, resStruct);
         } else {
-            return new AbstractMap.SimpleEntry<>(res, resSchema);
+            return new SchemaAndValue(resSchema, res);
         }
     }
 

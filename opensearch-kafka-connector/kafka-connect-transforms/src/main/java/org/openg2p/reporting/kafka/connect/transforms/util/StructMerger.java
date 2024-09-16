@@ -7,7 +7,10 @@ import org.apache.kafka.connect.transforms.util.SchemaUtil;
 import org.apache.kafka.connect.data.Field;
 
 import java.lang.reflect.Array;
+import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public class StructMerger {
     public static enum MapMergeStrategy {
@@ -49,6 +52,8 @@ public class StructMerger {
                     mergedStruct.put(field, concatArrays(value1, value2, value2.getClass()));
                 } else if (value1 instanceof Map && value2 instanceof Map && mapMergeStrategy == MapMergeStrategy.deep) {
                     mergedStruct.put(field, mergeMaps((Map<String, Object>) value1, (Map<String, Object>) value2, mapMergeStrategy, arrMergeStrategy));
+                } else if (value1 instanceof List && value2 instanceof List && arrMergeStrategy == ArrayMergeStrategy.concat) {
+                    mergedStruct.put(field, Stream.concat(((List)value1).stream(), ((List)value2).stream()).collect(Collectors.toList()));
                 } else {
                     mergedStruct.put(field, value2);
                 }
@@ -72,14 +77,18 @@ public class StructMerger {
     public static Map<String, Object> mergeMaps(Map<String, Object> map1, Map<String, Object> map2, MapMergeStrategy mapMergeStrategy, ArrayMergeStrategy arrMergeStrategy) {
         if (map1 == null) return map2;
         if (map2 == null) return map1;
-        for(String map1Key: map1.keySet()) {
-            if(!map2.containsKey(map1Key)) {
-                map2.put(map1Key, map1.get(map1Key));
+        for(String field: map1.keySet()) {
+            Object value1 = map1.get(field);
+            Object value2 = map2.get(field);
+            if(!map2.containsKey(field)) {
+                map2.put(field, value1);
             } else {
-                if (map1.get(map1Key) instanceof Map && map1.get(map1Key).getClass().equals(map2.get(map1Key).getClass()) && mapMergeStrategy == MapMergeStrategy.deep) {
-                    mergeMaps((Map<String, Object>)map1.get(map1Key), (Map<String, Object>)map2.get(map1Key), mapMergeStrategy, arrMergeStrategy);
-                } else if (map1.get(map1Key).getClass().isArray() && map1.get(map1Key).getClass().equals(map2.get(map1Key).getClass()) && arrMergeStrategy == ArrayMergeStrategy.concat) {
-                    map2.put(map1Key, concatArrays(map1.get(map1Key), map2.get(map1Key), map1.get(map1Key).getClass()));
+                if (value1 instanceof Map && value2 instanceof Map && mapMergeStrategy == MapMergeStrategy.deep) {
+                    mergeMaps((Map<String, Object>)value1, (Map<String, Object>)value2, mapMergeStrategy, arrMergeStrategy);
+                } else if (value1.getClass().isArray() && value2.getClass().isArray() && arrMergeStrategy == ArrayMergeStrategy.concat) {
+                    map2.put(field, concatArrays(value1, value2, value1.getClass()));
+                } else if (value1 instanceof List && value2 instanceof List && arrMergeStrategy == ArrayMergeStrategy.concat) {
+                    map2.put(field, Stream.concat(((List)value1).stream(), ((List)value2).stream()).collect(Collectors.toList()));
                 }
             }
         }
@@ -90,7 +99,7 @@ public class StructMerger {
     public static <T> T concatArrays(Object array1, Object array2, Class<T> clazz) {
         // T must be an array class
         assert clazz.isArray();
-        if (array1 == null && array2 == null) return null;
+        if ((array1 == null || Array.getLength(array1) == 0) && (array2 == null || Array.getLength(array2) == 0)) return null;
         else if ((array1 == null || Array.getLength(array1) == 0) && array2 != null) return clazz.cast(array2);
         else if (array1 != null && (array2 == null || Array.getLength(array2) == 0)) return clazz.cast(array1);
         T value1 = clazz.cast(array1);
