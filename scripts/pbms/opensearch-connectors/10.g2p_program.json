@@ -45,6 +45,6 @@
         "transforms.tsSelect.type": "org.openg2p.reporting.kafka.connect.transforms.TimestampSelector${dollar}Value",
         "transforms.tsSelect.ts.order": "write_date,create_date,source_ts_ms",
         "transforms.tsSelect.output.field": "@timestamp_gen"
-
-    }
+    },
+    "wait_after_init_secs": 15
 }
