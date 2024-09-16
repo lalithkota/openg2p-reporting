@@ -18,15 +18,13 @@
         "behavior.on.malformed.documents": "warn",
         "behavior.on.version.conflict": "warn",
 
-        "transforms": "keyExtId,valExt1,valExt2,tsconvert01,tsconvert02,tsconvert03,tsSelect",
+        "transforms": "keyExtId,valExt,tsconvert01,tsconvert02,tsconvert03,tsSelect",
 
         "transforms.keyExtId.type": "org.apache.kafka.connect.transforms.ExtractField${dollar}Key",
         "transforms.keyExtId.field": "id",
 
-        "transforms.valExt1.type": "org.apache.kafka.connect.transforms.ExtractField${dollar}Value",
-        "transforms.valExt1.field": "payload",
-        "transforms.valExt2.type": "org.apache.kafka.connect.transforms.ExtractField${dollar}Value",
-        "transforms.valExt2.field": "after",
+        "transforms.valExt.type": "org.openg2p.reporting.kafka.connect.transforms.ExtractFieldAdv${dollar}Value",
+        "transforms.valExt.field": "payload.source.ts_ms->source_ts_ms,payload.after",
 
         "transforms.tsconvert01.type": "org.openg2p.reporting.kafka.connect.transforms.TimestampConverterAdv${dollar}Value",
         "transforms.tsconvert01.field": "source_ts_ms",
@@ -40,7 +38,7 @@
         "transforms.tsconvert03.input.type": "micro_sec",
 
         "transforms.tsSelect.type": "org.openg2p.reporting.kafka.connect.transforms.TimestampSelector${dollar}Value",
-        "transforms.tsSelect.ts.order": "write_date,create_date",
+        "transforms.tsSelect.ts.order": "write_date,create_date,source_ts_ms",
         "transforms.tsSelect.output.field": "@timestamp_gen"
     }
 }
