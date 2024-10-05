@@ -13,7 +13,6 @@
         "database.dbname": "${DB_NAME}",
         "topic.prefix": "${DB_PREFIX_INDEX}",
         "table.include.list": "public.res_partner",
-        "column.exclude.list": "",
         "heartbeat.interval.ms": "${DEFAULT_DEBEZIUM_CONNECTOR_HEARTBEAT_MS}",
         "decimal.handling.mode": "double"
     },
