@@ -1,0 +1,47 @@
+{
+    "name": "g2p_id_type_history_${DB_PREFIX_INDEX}",
+    "config": {
+        "connector.class": "io.aiven.kafka.connect.opensearch.OpensearchSinkConnector",
+        "connection.url": "${OPENSEARCH_URL}",
+        "connection.username": "${OPENSEARCH_USERNAME}",
+        "connection.password": "${OPENSEARCH_PASSWORD}",
+        "tasks.max": "1",
+        "topics": "${DB_PREFIX_INDEX}.public.g2p_id_type",
+        "key.ignore": "true",
+        "schema.ignore": "true",
+        "key.converter": "org.apache.kafka.connect.json.JsonConverter",
+        "value.converter": "org.apache.kafka.connect.json.JsonConverter",
+        "key.converter.schemas.enable": "true",
+        "value.converter.schemas.enable": "false",
+
+        "behavior.on.null.values": "ignore",
+        "behavior.on.malformed.documents": "warn",
+        "behavior.on.version.conflict": "warn",
+
+        "transforms": "keyExtId,valExt,tsconvert01,tsconvert02,tsconvert03,tsSelect,renameTopic",
+
+        "transforms.keyExtId.type": "org.apache.kafka.connect.transforms.ExtractField${dollar}Key",
+        "transforms.keyExtId.field": "id",
+
+        "transforms.valExt.type": "org.openg2p.reporting.kafka.connect.transforms.ApplyJq${dollar}Value",
+        "transforms.valExt.field": ".payload.after + {source_ts_ms: .payload.source.ts_ms}",
+
+        "transforms.tsconvert01.type": "org.openg2p.reporting.kafka.connect.transforms.TimestampConverterAdv${dollar}Value",
+        "transforms.tsconvert01.field": "source_ts_ms",
+
+        "transforms.tsconvert02.type": "org.openg2p.reporting.kafka.connect.transforms.TimestampConverterAdv${dollar}Value",
+        "transforms.tsconvert02.field": "create_date",
+        "transforms.tsconvert02.input.type": "micro_sec",
+
+        "transforms.tsconvert03.type": "org.openg2p.reporting.kafka.connect.transforms.TimestampConverterAdv${dollar}Value",
+        "transforms.tsconvert03.field": "write_date",
+        "transforms.tsconvert03.input.type": "micro_sec",
+
+        "transforms.tsSelect.type": "org.openg2p.reporting.kafka.connect.transforms.TimestampSelector${dollar}Value",
+        "transforms.tsSelect.ts.order": "write_date,create_date,source_ts_ms",
+        "transforms.tsSelect.output.field": "@timestamp_gen",
+
+        "transforms.renameTopic.type": "org.openg2p.reporting.kafka.connect.transforms.RenameTopic",
+        "transforms.renameTopic.topic": "${DB_PREFIX_INDEX}.public.g2p_id_type_history"
+    }
+}

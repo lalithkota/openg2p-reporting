@@ -24,7 +24,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 
 public abstract class TriggerDeduplication<R extends ConnectRecord<R>> extends BaseTransformation<R> {
     public static class Key<R extends ConnectRecord<R>> extends TriggerDeduplication<R>{}
@@ -126,7 +125,7 @@ public abstract class TriggerDeduplication<R extends ConnectRecord<R>> extends B
     }
 
     public static final String PURPOSE = "trigger deduplication";
-    
+
     public static final String DEDUPE_BASE_URL_CONFIG = "deduplication.base.url";
     public static final String DEDUPE_CONFIG_NAME = "dedupe.config.name";
     public static final String ID_EXPR_CONFIG = "id.expr";
@@ -180,7 +179,7 @@ public abstract class TriggerDeduplication<R extends ConnectRecord<R>> extends B
                 throw new ConfigException("Invalid Jq expr for after: " + e.getMessage(), e);
             }
         }
-            
+
         config = new Config(dedupeServiceBaseUrl, configName, idExpr, beforeExpr, afterExpr, waitBeforeExecSecs);
     }
 
