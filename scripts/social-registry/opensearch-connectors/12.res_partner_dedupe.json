@@ -1,5 +1,5 @@
 {
-    "name": "res_partner_deduplicate_${DB_PREFIX_INDEX}",
+    "name": "res_partner_dedupe_${DB_PREFIX_INDEX}",
     "config": {
         "connector.class": "io.aiven.kafka.connect.opensearch.OpensearchSinkConnector",
         "connection.url": "${DEDUPE_OPENSEARCH_URL}",
