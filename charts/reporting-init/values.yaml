@@ -325,6 +325,10 @@ startUpCommand: |-
       for geojson_file in opensearch-dashboards/*.geojson ; do
         index_name=$(basename "$geojson_file" ".geojson")
         index_name=${index_name// /_}
+        if [[ $index_name =~ \. ]]; then
+          index_name=${index_name#*.}
+          index_name=${index_name//./_}
+        fi
 
         if [ -n "$index_name" ]; then
           echo "==> Importing Geojson - $geojson_file."
