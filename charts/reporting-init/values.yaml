@@ -223,33 +223,37 @@ startUpCommand: |-
     config_var=$1
     config_file_path=$2
     config_json=$(cat $config_file_path 2>/dev/null || echo)
-    envsubst <<< "$config_json" | jq -cr "$config_var // empty"
+    envsubst <<< "$config_json" | jq -cj "$config_var // empty"
   }
 
   echo "====> DEBEZIUM CONNECTORS"
   if [ "$INIT_DEBEZIUM_CONNECTORS" = "true" ] && [ -d debezium-connectors ]; then
     echo "==> Starting Debezium Connector Initialization"
-    debezium_existing_connectors_list=$(curl -s $DEBEZIUM_URL/connectors | jq -cr '.[]')
+    TEMP_DEBEZIUM_CONNECTOR_FILE="/tmp/temp_debez_conn.json"
+    debezium_existing_connectors_list=$(curl -s $DEBEZIUM_URL/connectors | jq -cj '.[]')
     debezium_new_connectors_list=()
     for debezium_conn in debezium-connectors/*.json ; do
-      debezium_connector_config=$(envsubst < $debezium_conn | jq -cr '.')
-      debezium_connector_name=$(echo $debezium_connector_config | jq -cr '.name')
+      envsubst < $debezium_conn | jq -cj '.' > $TEMP_DEBEZIUM_CONNECTOR_FILE
+      debezium_connector_name=$(jq -cj '.name' $TEMP_DEBEZIUM_CONNECTOR_FILE)
       debezium_new_connectors_list+=("$debezium_connector_name")
 
-      debez_wait_init_secs=$(echo $debezium_connector_config | jq -cr '.wait_after_init_secs // empty')
-      debez_wait_update_secs=$(echo $debezium_connector_config | jq -cr '.wait_after_update_secs // empty')
-      debezium_connector_config=$(echo $debezium_connector_config | jq -cr 'del(.wait_after_init_secs, .wait_after_update_secs)')
+      debez_wait_init_secs=$(jq -cj '.wait_after_init_secs // empty' $TEMP_DEBEZIUM_CONNECTOR_FILE)
+      debez_wait_update_secs=$(jq -cj '.wait_after_update_secs // empty' $TEMP_DEBEZIUM_CONNECTOR_FILE)
+      jq -cj 'del(.wait_after_init_secs, .wait_after_update_secs)' $TEMP_DEBEZIUM_CONNECTOR_FILE > "${TEMP_DEBEZIUM_CONNECTOR_FILE}2"
+      mv "${TEMP_DEBEZIUM_CONNECTOR_FILE}2" $TEMP_DEBEZIUM_CONNECTOR_FILE
 
       if_exists=$(contains "$debezium_existing_connectors_list" "$debezium_connector_name")
       if [ -z "$if_exists" ]; then
         echo "==> Creating new Connector - $debezium_connector_name."
-        curl -s -XPOST -H 'Content-Type: application/json' $DEBEZIUM_URL/connectors -d "$debezium_connector_config" | jq
+        curl -s -XPOST -H 'Content-Type: application/json' $DEBEZIUM_URL/connectors -d @$TEMP_DEBEZIUM_CONNECTOR_FILE | jq
         if [ -n "$debez_wait_init_secs" ]; then
           sleep $debez_wait_init_secs
         fi
       else
         echo "==> Connector - $debezium_connector_name - already exists. Updating config."
-        curl -s -XPUT -H 'Content-Type: application/json' $DEBEZIUM_URL/connectors/${debezium_connector_name}/config -d "$(echo $debezium_connector_config | jq -cr '.config')" | jq
+        jq -cj '.config' $TEMP_DEBEZIUM_CONNECTOR_FILE > "${TEMP_DEBEZIUM_CONNECTOR_FILE}2"
+        mv "${TEMP_DEBEZIUM_CONNECTOR_FILE}2" $TEMP_DEBEZIUM_CONNECTOR_FILE
+        curl -s -XPUT -H 'Content-Type: application/json' $DEBEZIUM_URL/connectors/${debezium_connector_name}/config -d @$TEMP_DEBEZIUM_CONNECTOR_FILE | jq
         if [ -n "$debez_wait_update_secs" ]; then
           sleep $debez_wait_update_secs
         fi
@@ -269,27 +273,31 @@ startUpCommand: |-
   echo "====> OPENSEARCH CONNECTORS"
   if [ "$INIT_OS_KAFKA_CONNECTORS" = "true" ] && [ -d opensearch-connectors ]; then
     echo "==> Starting Opensearch Connector Initialization"
-    os_existing_connectors_list=$(curl -s $OS_KAFKA_CONNECTOR_URL/connectors | jq -cr '.[]')
+    TEMP_OS_KAFKA_CONNECTOR_FILE="/tmp/temp_os_kafka_conn.json"
+    os_existing_connectors_list=$(curl -s $OS_KAFKA_CONNECTOR_URL/connectors | jq -cj '.[]')
     os_new_connectors_list=()
     for os_conn in opensearch-connectors/*.json ; do
-      os_connector_config=$(envsubst < $os_conn | jq -cr '.')
-      os_connector_name=$(echo $os_connector_config | jq -cr '.name')
+      envsubst < $os_conn | jq -cj '.' > $TEMP_OS_KAFKA_CONNECTOR_FILE
+      os_connector_name=$(jq -cj '.name' $TEMP_OS_KAFKA_CONNECTOR_FILE)
       os_new_connectors_list+=("$os_connector_name")
 
-      os_wait_init_secs=$(echo $os_connector_config | jq -cr '.wait_after_init_secs // empty')
-      os_wait_update_secs=$(echo $os_connector_config | jq -cr '.wait_after_update_secs // empty')
-      os_connector_config=$(echo $os_connector_config | jq -cr 'del(.wait_after_init_secs, .wait_after_update_secs)')
+      os_wait_init_secs=$(jq -cj '.wait_after_init_secs // empty' $TEMP_OS_KAFKA_CONNECTOR_FILE)
+      os_wait_update_secs=$(jq -cj '.wait_after_update_secs // empty' $TEMP_OS_KAFKA_CONNECTOR_FILE)
+      jq -cj 'del(.wait_after_init_secs, .wait_after_update_secs)' $TEMP_OS_KAFKA_CONNECTOR_FILE > "${TEMP_OS_KAFKA_CONNECTOR_FILE}2"
+      mv "${TEMP_OS_KAFKA_CONNECTOR_FILE}2" $TEMP_OS_KAFKA_CONNECTOR_FILE
 
       if_exists=$(contains "$os_existing_connectors_list" "$os_connector_name")
       if [ -z "$if_exists" ]; then
         echo "==> Creating new Connector - $os_connector_name."
-        curl -s -XPOST -H 'Content-Type: application/json' $OS_KAFKA_CONNECTOR_URL/connectors -d "$os_connector_config" | jq
+        curl -s -XPOST -H 'Content-Type: application/json' $OS_KAFKA_CONNECTOR_URL/connectors -d @$TEMP_OS_KAFKA_CONNECTOR_FILE | jq
         if [ -n "$os_wait_init_secs" ]; then
           sleep $os_wait_init_secs
         fi
       else
         echo "==> Connector - $os_connector_name - already exists. Updating config."
-        curl -s -XPUT -H 'Content-Type: application/json' $OS_KAFKA_CONNECTOR_URL/connectors/${os_connector_name}/config -d "$(echo $os_connector_config | jq -cr '.config')" | jq
+        jq -cj '.config' $TEMP_OS_KAFKA_CONNECTOR_FILE > "${TEMP_OS_KAFKA_CONNECTOR_FILE}2"
+        mv "${TEMP_OS_KAFKA_CONNECTOR_FILE}2" $TEMP_OS_KAFKA_CONNECTOR_FILE
+        curl -s -XPUT -H 'Content-Type: application/json' $OS_KAFKA_CONNECTOR_URL/connectors/${os_connector_name}/config -d @$TEMP_OS_KAFKA_CONNECTOR_FILE | jq
         if [ -n "$os_wait_update_secs" ]; then
           sleep $os_wait_update_secs
         fi
@@ -310,7 +318,9 @@ startUpCommand: |-
   if [ "$INIT_OS_DASHBOARDS" = "true" ] && [ -d opensearch-dashboards ]; then
     if [ "$INIT_OS_DASHBOARDS_GEOJSON" = "true" ]; then
       echo "==> Starting geojson upload process for opensearch-dashboards."
+
       TEMP_GEOJSON_FILE="/tmp/temp_geojson.geojson"
+      TEMP_GEOJSON_LINE_FILE="/tmp/temp_geojson_line.json"
 
       for geojson_file in opensearch-dashboards/*.geojson ; do
         index_name=$(basename "$geojson_file" ".geojson")
@@ -321,14 +331,17 @@ startUpCommand: |-
 
           geojson_id_field=$(get_config_value "geojson_id_field_${index_name}" opensearch-dashboards/config)
 
-          envsubst < $geojson_file | jq -cr '.features | .[] | .properties * {location: .geometry}' > $TEMP_GEOJSON_FILE
+          envsubst < $geojson_file | jq -cj '.features | .[] | .properties * {location: .geometry}' > $TEMP_GEOJSON_FILE
 
           index_name="${index_name//_/-}-map"
 
-          while read -r geojson_line; do
-            if [ -n "$geojson_line" ]; then
+          geojson_line_count=$(wc -l < $TEMP_GEOJSON_FILE)
+
+          for i in $(seq 1 $geojson_line_count); do
+            cut -d$'\n' -f$i $TEMP_GEOJSON_FILE > $TEMP_GEOJSON_LINE_FILE
+            if [ -s $TEMP_GEOJSON_LINE_FILE ]; then
               if [ -n "$geojson_id_field" ]; then
-                geojson_document_id=$(echo $geojson_line | jq -cr ".${geojson_id_field} // empty")
+                geojson_document_id=$(jq -cj ".${geojson_id_field} // empty" $TEMP_GEOJSON_LINE_FILE)
                 if [ -n "$geojson_document_id" ]; then
                   geojson_upload_http_method=PUT
                 fi
@@ -336,9 +349,9 @@ startUpCommand: |-
 
               geojson_upload_http_method=${geojson_upload_http_method:-POST}
 
-              curl -s -X $geojson_upload_http_method -u "$OPENSEARCH_USERNAME:$OPENSEARCH_PASSWORD" -H "content-type: application/json" --variable id="$geojson_document_id" --expand-url "${OPENSEARCH_URL}/${index_name}/_doc/{{id:url}}" -d "$geojson_line" | jq
+              curl -s -X $geojson_upload_http_method -u "$OPENSEARCH_USERNAME:$OPENSEARCH_PASSWORD" -H "content-type: application/json" --variable id="$geojson_document_id" --expand-url "${OPENSEARCH_URL}/${index_name}/_doc/{{id:url}}" -d @$TEMP_GEOJSON_LINE_FILE | jq
             fi
-          done < $TEMP_GEOJSON_FILE
+          done
         fi
       done
     fi
