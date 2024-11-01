@@ -149,6 +149,11 @@ gitConfig:
 envVars:
   GIT_CONFIG_ENABLED: '{{ .Values.gitConfig.enabled }}'
 
+  INIT_DEBEZIUM_CONNECTORS: true
+  INIT_OS_KAFKA_CONNECTORS: true
+  INIT_OS_DASHBOARDS: true
+  INIT_OS_DASHBOARDS_GEOJSON: true
+
   DEBEZIUM_URL: '{{ tpl .Values.debeziumInstallationName $ }}'
   OS_KAFKA_CONNECTOR_URL: '{{ tpl .Values.osKafkaConnectorInstallationName $ }}'
 
@@ -214,8 +219,15 @@ startUpCommand: |-
     for conn in $arr ; do if [ "$conn" = "$value_to_check" ]; then echo "yes"; fi ; done
   }
 
+  function get_config_value() {
+    config_var=$1
+    config_file_path=$2
+    config_json=$(cat $config_file_path 2>/dev/null || echo)
+    envsubst <<< "$config_json" | jq -cr "$config_var // empty"
+  }
+
   echo "====> DEBEZIUM CONNECTORS"
-  if [ -d debezium-connectors ]; then
+  if [ "$INIT_DEBEZIUM_CONNECTORS" = "true" ] && [ -d debezium-connectors ]; then
     echo "==> Starting Debezium Connector Initialization"
     debezium_existing_connectors_list=$(curl -s $DEBEZIUM_URL/connectors | jq -cr '.[]')
     debezium_new_connectors_list=()
@@ -255,7 +267,7 @@ startUpCommand: |-
   fi
 
   echo "====> OPENSEARCH CONNECTORS"
-  if [ -d opensearch-connectors ]; then
+  if [ "$INIT_OS_KAFKA_CONNECTORS" = "true" ] && [ -d opensearch-connectors ]; then
     echo "==> Starting Opensearch Connector Initialization"
     os_existing_connectors_list=$(curl -s $OS_KAFKA_CONNECTOR_URL/connectors | jq -cr '.[]')
     os_new_connectors_list=()
@@ -295,12 +307,48 @@ startUpCommand: |-
   fi
 
   echo "====> OPENSEARCH DASHBOARDS"
-  if [ -d opensearch-dashboards ]; then
+  if [ "$INIT_OS_DASHBOARDS" = "true" ] && [ -d opensearch-dashboards ]; then
+    if [ "$INIT_OS_DASHBOARDS_GEOJSON" = "true" ]; then
+      echo "==> Starting geojson upload process for opensearch-dashboards."
+      TEMP_GEOJSON_FILE="/tmp/temp_geojson.geojson"
+
+      for geojson_file in opensearch-dashboards/*.geojson ; do
+        index_name=$(basename "$geojson_file" ".geojson")
+        index_name=${index_name// /_}
+
+        if [ -n "$index_name" ]; then
+          echo "==> Importing Geojson - $geojson_file."
+
+          geojson_id_field=$(get_config_value "geojson_id_field_${index_name}" opensearch-dashboards/config)
+
+          envsubst < $geojson_file | jq -cr '.features | .[] | .properties * {location: .geometry}' > $TEMP_GEOJSON_FILE
+
+          index_name="${index_name//_/-}-map"
+
+          while read -r geojson_line; do
+            if [ -n "$geojson_line" ]; then
+              if [ -n "$geojson_id_field" ]; then
+                geojson_document_id=$(echo $geojson_line | jq -cr ".${geojson_id_field} // empty")
+                if [ -n "$geojson_document_id" ]; then
+                  geojson_upload_http_method=PUT
+                fi
+              fi
+
+              geojson_upload_http_method=${geojson_upload_http_method:-POST}
+
+              curl -s -X $geojson_upload_http_method -u "$OPENSEARCH_USERNAME:$OPENSEARCH_PASSWORD" -H "content-type: application/json" --variable id="$geojson_document_id" --expand-url "${OPENSEARCH_URL}/${index_name}/_doc/{{id:url}}" -d "$geojson_line" | jq
+            fi
+          done < $TEMP_GEOJSON_FILE
+        fi
+      done
+    fi
+
     TEMP_DASHBOARD_OBJECT_FILE="/tmp/temp_kib_obj.ndjson"
 
+    echo "==> Starting opensearch-dashboards upload process."
     for os_dash in opensearch-dashboards/*.ndjson ; do
       envsubst < $os_dash > $TEMP_DASHBOARD_OBJECT_FILE
       echo "==> Importing Dashboard - $os_dash."
-      curl -s -XPOST -u $OPENSEARCH_USERNAME:$OPENSEARCH_PASSWORD "${OPENSEARCH_DASHBOARDS_URL}/api/saved_objects/_import?overwrite=true" -H "osd-xsrf: true" --form file=@$TEMP_DASHBOARD_OBJECT_FILE | jq
+      curl -s -XPOST -u "$OPENSEARCH_USERNAME:$OPENSEARCH_PASSWORD" "${OPENSEARCH_DASHBOARDS_URL}/api/saved_objects/_import?overwrite=true" -H "osd-xsrf: true" --form file=@$TEMP_DASHBOARD_OBJECT_FILE | jq
     done
   fi
