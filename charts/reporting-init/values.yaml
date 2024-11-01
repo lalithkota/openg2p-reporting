@@ -233,7 +233,7 @@ startUpCommand: |-
     debezium_existing_connectors_list=$(curl -s $DEBEZIUM_URL/connectors | jq -cj '.[]')
     debezium_new_connectors_list=()
     for debezium_conn in debezium-connectors/*.json ; do
-      envsubst < $debezium_conn | jq -cj '.' > $TEMP_DEBEZIUM_CONNECTOR_FILE
+      envsubst < $debezium_conn > $TEMP_DEBEZIUM_CONNECTOR_FILE
       debezium_connector_name=$(jq -cj '.name' $TEMP_DEBEZIUM_CONNECTOR_FILE)
       debezium_new_connectors_list+=("$debezium_connector_name")
 
@@ -277,7 +277,7 @@ startUpCommand: |-
     os_existing_connectors_list=$(curl -s $OS_KAFKA_CONNECTOR_URL/connectors | jq -cj '.[]')
     os_new_connectors_list=()
     for os_conn in opensearch-connectors/*.json ; do
-      envsubst < $os_conn | jq -cj '.' > $TEMP_OS_KAFKA_CONNECTOR_FILE
+      envsubst < $os_conn > $TEMP_OS_KAFKA_CONNECTOR_FILE
       os_connector_name=$(jq -cj '.name' $TEMP_OS_KAFKA_CONNECTOR_FILE)
       os_new_connectors_list+=("$os_connector_name")
 
