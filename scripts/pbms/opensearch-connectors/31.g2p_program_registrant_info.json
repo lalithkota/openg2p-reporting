@@ -7,6 +7,7 @@
         "connection.password": "${OPENSEARCH_PASSWORD}",
         "tasks.max": "1",
         "topics": "${DB_PREFIX_INDEX}.public.g2p_program_registrant_info",
+        "index.write.method": "upsert",
         "key.ignore": "false",
         "schema.ignore": "true",
         "key.converter": "org.apache.kafka.connect.json.JsonConverter",
@@ -24,7 +25,7 @@
         "transforms.keyExtId.field": "id",
 
         "transforms.valExt.type": "org.openg2p.reporting.kafka.connect.transforms.ApplyJq${dollar}Value",
-        "transforms.valExt.expr": ".payload.after + {source_ts_ms: .payload.source.ts_ms}",
+        "transforms.valExt.expr": ".payload.after + (if .payload.after then {source_ts_ms: .payload.source.ts_ms} else null end)",
 
         "transforms.tsconvert01.type": "org.openg2p.reporting.kafka.connect.transforms.TimestampConverterAdv${dollar}Value",
         "transforms.tsconvert01.field": "source_ts_ms",
