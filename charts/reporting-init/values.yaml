@@ -353,7 +353,7 @@ startUpCommand: |-
 
               geojson_upload_http_method=${geojson_upload_http_method:-POST}
 
-              curl -s -X $geojson_upload_http_method -u "$OPENSEARCH_USERNAME:$OPENSEARCH_PASSWORD" -H "content-type: application/json" --variable id="$geojson_document_id" --expand-url "${OPENSEARCH_URL}/${index_name}/_doc/{{id:url}}" -d @$TEMP_GEOJSON_LINE_FILE | jq
+              curl -s -X $geojson_upload_http_method -u "$OPENSEARCH_USERNAME:$OPENSEARCH_PASSWORD" -H "content-type: application/json" --variable id="$geojson_document_id" --expand-url "${OPENSEARCH_URL}/${index_name}/_doc/{{ "{{id:url}}" }}" -d @$TEMP_GEOJSON_LINE_FILE | jq
             fi
           done
         fi
