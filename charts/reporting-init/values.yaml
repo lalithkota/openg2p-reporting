@@ -197,6 +197,7 @@ startUpCommand: |-
 
   set -o pipefail
   set -e
+  shopt -s nullglob
 
   until pg_isready -h ${DB_HOSTNAME} -p ${DB_PORT}; do sleep 3; done && echo "Connection with PostgreSQL successful."
   curl -k -I -s -o /dev/null -m 10 --retry 100 --retry-delay 10 --retry-all-errors "${OPENSEARCH_URL}" && echo "Connection with OpenSearch successful."
