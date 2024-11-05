@@ -223,14 +223,14 @@ startUpCommand: |-
     config_var=$1
     config_file_path=$2
     config_json=$(cat $config_file_path 2>/dev/null || echo)
-    envsubst <<< "$config_json" | jq -cj "$config_var // empty"
+    envsubst <<< "$config_json" | jq -cj ".$config_var // empty"
   }
 
   echo "====> DEBEZIUM CONNECTORS"
   if [ "$INIT_DEBEZIUM_CONNECTORS" = "true" ] && [ -d debezium-connectors ]; then
     echo "==> Starting Debezium Connector Initialization"
     TEMP_DEBEZIUM_CONNECTOR_FILE="/tmp/temp_debez_conn.json"
-    debezium_existing_connectors_list=$(curl -s $DEBEZIUM_URL/connectors | jq -cj '.[]')
+    debezium_existing_connectors_list=$(curl -s $DEBEZIUM_URL/connectors | jq -cr '.[]')
     debezium_new_connectors_list=()
     for debezium_conn in debezium-connectors/*.json ; do
       envsubst < $debezium_conn > $TEMP_DEBEZIUM_CONNECTOR_FILE
@@ -274,7 +274,7 @@ startUpCommand: |-
   if [ "$INIT_OS_KAFKA_CONNECTORS" = "true" ] && [ -d opensearch-connectors ]; then
     echo "==> Starting Opensearch Connector Initialization"
     TEMP_OS_KAFKA_CONNECTOR_FILE="/tmp/temp_os_kafka_conn.json"
-    os_existing_connectors_list=$(curl -s $OS_KAFKA_CONNECTOR_URL/connectors | jq -cj '.[]')
+    os_existing_connectors_list=$(curl -s $OS_KAFKA_CONNECTOR_URL/connectors | jq -cr '.[]')
     os_new_connectors_list=()
     for os_conn in opensearch-connectors/*.json ; do
       envsubst < $os_conn > $TEMP_OS_KAFKA_CONNECTOR_FILE
