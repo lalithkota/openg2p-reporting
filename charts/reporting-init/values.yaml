@@ -336,7 +336,7 @@ startUpCommand: |-
 
           geojson_id_field=$(get_config_value "geojson_id_field_${index_name}" opensearch-dashboards/config)
 
-          envsubst < $geojson_file | jq -cj '.features | .[] | .properties * {location: .geometry}' > $TEMP_GEOJSON_FILE
+          envsubst < $geojson_file | jq -cr '.features | .[] | .properties * {location: .geometry}' > $TEMP_GEOJSON_FILE
 
           index_name="${index_name//_/-}-map"
 
