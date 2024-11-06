@@ -170,6 +170,8 @@ envVars:
   OPENSEARCH_SECURITY_ENABLED: true
   OPENSEARCH_USERNAME: admin
 
+  OPENSEARCH_BULK_REQUEST_LIMIT: 256
+
   DEDUPE_SERVICE_BASE_URL: 'http://{{ tpl .Values.dedupeServiceInstallationName $ }}'
   DEDUPE_OPENSEARCH_URL: 'https://{{ tpl .Values.dedupeOpensearchInstallationName $ }}:9200'
   DEDUPE_OPENSEARCH_SECURITY_ENABLED: true
@@ -321,6 +323,7 @@ startUpCommand: |-
       echo "==> Starting geojson upload process for opensearch-dashboards."
 
       TEMP_GEOJSON_FILE="/tmp/temp_geojson.geojson"
+      TEMP_GEOJSON_SPLIT_FILE="/tmp/temp_geojson_split.geojson"
 
       for geojson_file in opensearch-dashboards/*.geojson ; do
         index_name=$(basename "$geojson_file" ".geojson")
@@ -343,10 +346,17 @@ startUpCommand: |-
             envsubst < $geojson_file | jq -cr ".features | .[] | .properties * {location: .geometry} | [{index:{_index:\"${index_name}\"}},.] | .[]" > $TEMP_GEOJSON_FILE
           fi
 
-          if [ -s $TEMP_GEOJSON_FILE ]; then
-            echo "==> Geojson upload in progress."
-            curl -k -sS -XPOST -u "$OPENSEARCH_USERNAME:$OPENSEARCH_PASSWORD" -H "content-type: application/json" "${OPENSEARCH_URL}/_bulk" -d @$TEMP_GEOJSON_FILE | jq -cr '.'
-          fi
+          geojson_lines=$(wc -l < $TEMP_GEOJSON_FILE)
+          geojson_splits=$(( ( $geojson_lines / $OPENSEARCH_BULK_REQUEST_LIMIT ) + ( $geojson_lines % $OPENSEARCH_BULK_REQUEST_LIMIT > 0 ) ))
+
+          for i in $(seq 1 $geojson_splits); do
+            rm -f $TEMP_GEOJSON_SPLIT_FILE
+            sed -n "$(( ( $i - 1 ) * $OPENSEARCH_BULK_REQUEST_LIMIT + 1 )),$(( $i * $OPENSEARCH_BULK_REQUEST_LIMIT ))p" $TEMP_GEOJSON_FILE > $TEMP_GEOJSON_SPLIT_FILE
+            if [ -s $TEMP_GEOJSON_SPLIT_FILE ]; then
+              echo "==> Geojson upload in progress."
+              curl -k -sS -XPOST -u "$OPENSEARCH_USERNAME:$OPENSEARCH_PASSWORD" -H "content-type: application/json" "${OPENSEARCH_URL}/_bulk" --data-binary @$TEMP_GEOJSON_SPLIT_FILE | jq -cr '.'
+            fi
+          done
         fi
       done
     fi
