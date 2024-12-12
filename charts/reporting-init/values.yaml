@@ -11,7 +11,7 @@
 reportingInstallationName: '{{ .Release.Name }}-reporting'
 debeziumInstallationName: '{{ tpl .Values.reportingInstallationName $ }}-debezium'
 osKafkaConnectorInstallationName: '{{ tpl .Values.reportingInstallationName $ }}-os-kafka-connector'
-opensearchInstallationName: '{{ tpl .Values.reportingInstallationName $ }}-opensearch'
+opensearchInstallationName: '{{ .Release.Name }}-opensearch'
 dedupeServiceInstallationName: '{{ .Release.Name }}-deduplicator-openg2p-deduplicator'
 dedupeOpensearchInstallationName: '{{ .Release.Name }}-deduplicator-opensearch'
 postgresqlInstallationName: '{{ .Release.Name }}-postgresql'
