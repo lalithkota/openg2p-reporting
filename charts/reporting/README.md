@@ -7,4 +7,4 @@ This chart contains the following components:
 - Debezium Kafka Connector
 - Opensearch Kafka Connector
 
-Note: Reporting Charts older than version 1.3.x used to install kafka and opensearch dependencies. Later version helm charts do NOT install the dependencies along with them.
+Note: Reporting Charts versions lower than 1.3 install kafka and opensearch dependencies. Helm charts version 1.3.x and higher do NOT install the dependencies along with them.
